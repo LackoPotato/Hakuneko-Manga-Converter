@@ -1,0 +1,21 @@
+<!DOCTYPE html><head><meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+  if (document.readyState !== 'loading') {
+    setscroll();
+  } else {
+  document.addEventListener("DOMContentLoaded", function(event) {
+   setscroll();
+  });
+  };
+  function setscroll(){
+    var scrollpos = localStorage.getItem('scrollpos');
+    if (scrollpos) window.scrollTo(0, scrollpos);
+  };
+  window.onbeforeunload = function(e) {localStorage.setItem('scrollpos', window.scrollY);};
+  </script>
+</head>
+<body style="display:flex; flex-direction: column; margin: 0px 10%;justify-content: center;background:#282828;">
+    {text}
+</body>
+

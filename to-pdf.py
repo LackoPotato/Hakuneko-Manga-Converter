@@ -14,15 +14,15 @@ def listdir(path: str) -> list[str]:
 
 
 class ARGS:
-    inp: str = "in="
-    outp: str = "out="
-    chreg: str = "chapter_regex="
-    pgreg: str = "page_regex="
-    chsortnum: str = "sortchapternum"
-    pgsortnum: str = "sortpagenum"
-    chpreset: str = "chpreset="
-    pgpreset: str = "pgpreset="
-    help: str = "help"
+    IN: str = "in="
+    OUT: str = "out="
+    CHREG: str = "chapter_regex="
+    PGREG: str = "page_regex="
+    SORTCHNUM: str = "sortchapternum"
+    SORTPGNUM: str = "sortpagenum"
+    PRESETCH: str = "chpreset="
+    PRESETPG: str = "pgpreset="
+    HELP: str = "help"
 
 
 class PRESETS:
@@ -40,33 +40,32 @@ page_expression = ""
 page_sort_number = False
 
 
-def get_help_page() -> str:
-    return f"""{ansi.fore16.cyan}HAKUNEKO TO PDF (By LackoPotato :3)
+help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO TO PDF (By LackoPotato :3)
 
           {ansi.font.bold}REQUIRED Arguments--{ansi.clear}
 
-          {ansi.fore16.red}{ARGS.inp}[path/to/input]{ansi.clear}
+          {ansi.fore16.red}{ARGS.IN}[path/to/input]{ansi.clear}
           \tThe input directory used
 
-          {ansi.fore16.red}{ARGS.outp}[path/to/output]{ansi.clear}
+          {ansi.fore16.red}{ARGS.OUT}[path/to/output]{ansi.clear}
           \tThe file it saves the PDF as
 
           {ansi.fore16.cyan}Optional Arguments--{ansi.clear}
 
-          {ansi.fore16.red}{ARGS.help}{ansi.clear}
+          {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
           \t Shows this help page
 
-          {ansi.fore16.red}{ARGS.chsortnum}{ansi.clear}
+          {ansi.fore16.red}{ARGS.SORTCHNUM}{ansi.clear}
           \tSorts chapters numerically if possible
 
-          {ansi.fore16.red}{ARGS.pgsortnum}{ansi.clear}
+          {ansi.fore16.red}{ARGS.SORTPGNUM}{ansi.clear}
           \tSorts pages numerically if possible
 
-          {ansi.fore16.red}{ARGS.chreg}[regex expression]{ansi.clear}
+          {ansi.fore16.red}{ARGS.CHREG}[regex expression]{ansi.clear}
           \tThe Regular Expression used to mask the chapter directory name (used for sorting)
-          \tUse {ansi.qformat(ARGS.chpreset, ansi.fore16.red)} if you want a preset
+          \tUse {ansi.qformat(ARGS.PRESETCH, ansi.fore16.red)} if you want a preset
 
-          {ansi.fore16.red}{ARGS.chpreset}[Chapter Preset Option]{ansi.clear}
+          {ansi.fore16.red}{ARGS.PRESETCH}[Chapter Preset Option]{ansi.clear}
           \tPresets Options:
           \t\tch
           \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ch"]}
@@ -76,11 +75,11 @@ def get_help_page() -> str:
           \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["1num"]}
           \t\t\tGets the first number in the directory name (example: Chapter 02 returns 02)
 
-          {ansi.fore16.red}{ARGS.pgreg}[regex expression]{ansi.clear}
+          {ansi.fore16.red}{ARGS.PGREG}[regex expression]{ansi.clear}
           \tThe Regular Expression used to mask the page directory name (used for sorting)
-          \tUse {ansi.qformat(ARGS.pgpreset, ansi.fore16.red)} if you want a preset
+          \tUse {ansi.qformat(ARGS.PRESETPG, ansi.fore16.red)} if you want a preset
 
-          {ansi.fore16.red}{ARGS.pgpreset}[Page Preset Option]{ansi.clear}
+          {ansi.fore16.red}{ARGS.PRESETPG}[Page Preset Option]{ansi.clear}
           \tPresets Options:
           \t\t1num
           \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.pg["1num"]}
@@ -91,41 +90,43 @@ def get_help_page() -> str:
 
 
 if len(sys.argv) == 1:
-    raise Exception(f"No argument provided!\n\n{get_help_page()}")
+    raise Exception(f"No argument provided!\n\n{help_string}")
 
-for command in sys.argv[1:]:
-    if command.startswith(ARGS.chreg):
-        chapter_expression = command.removeprefix(ARGS.chreg)
-    elif command.startswith(ARGS.pgreg):
-        page_expression = command.removeprefix(ARGS.pgreg)
-    elif command.startswith(ARGS.chpreset):
-        preset: str = command.removeprefix(ARGS.chpreset)
-        if preset not in PRESETS.ch:
-            raise Exception(
-                f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.ch.keys()}"
-            )
-        chapter_expression = PRESETS.ch[preset]
-    elif command.startswith(ARGS.pgpreset):
-        preset: str = command.removeprefix(ARGS.pgpreset)
-        if preset not in PRESETS.pg:
-            raise Exception(
-                f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
-            )
-        chapter_expression = PRESETS.pg[preset]
-    elif command.startswith(ARGS.inp):
-        manga_path = command.removeprefix(ARGS.inp)
-    elif command.startswith(ARGS.outp):
-        out_path = command.removeprefix(ARGS.outp)
-    elif command == ARGS.chsortnum:
-        chapter_sort_number = True
-    elif command == ARGS.pgsortnum:
-        page_sort_number = True
-    elif command == ARGS.help:
-        raise Exception(get_help_page())
-    else:
-        raise Exception(
-            f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{command}\nUse {ansi.qformat(ARGS.help, ansi.fore16.blue)} if you want to view the help page"
-        )
+for argument in sys.argv[1:]:
+    match argument:
+        case ARGS.SORTCHNUM:
+            chapter_sort_number = True
+        case ARGS.SORTPGNUM:
+            page_sort_number = True
+        case ARGS.HELP:
+            raise Exception(help_string)
+        case _:
+            if argument.startswith(ARGS.CHREG):
+                chapter_expression = argument.removeprefix(ARGS.CHREG)
+            elif argument.startswith(ARGS.PGREG):
+                page_expression = argument.removeprefix(ARGS.PGREG)
+            elif argument.startswith(ARGS.PRESETCH):
+                preset: str = argument.removeprefix(ARGS.PRESETCH)
+                if preset not in PRESETS.ch:
+                    raise Exception(
+                        f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.ch.keys()}"
+                    )
+                chapter_expression = PRESETS.ch[preset]
+            elif argument.startswith(ARGS.PRESETPG):
+                preset: str = argument.removeprefix(ARGS.PRESETPG)
+                if preset not in PRESETS.pg:
+                    raise Exception(
+                        f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
+                    )
+                chapter_expression = PRESETS.pg[preset]
+            elif argument.startswith(ARGS.IN):
+                manga_path = argument.removeprefix(ARGS.IN)
+            elif argument.startswith(ARGS.OUT):
+                out_path = argument.removeprefix(ARGS.OUT)
+            else:
+                raise Exception(
+                    f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
+                )
 
 if manga_path == "":
     raise Exception(ansi.qformat("Path to manga is not provided.", ansi.fore16.cyan))

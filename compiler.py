@@ -1,21 +1,35 @@
+from PIL import Image
 import ansi
+import os
 import sys
 import pages
-import os
 import shutil
 
 
+def listdir(path: str) -> list[str]:
+    files: list[str] = []
+    for file in os.listdir(path):
+        if not file.startswith("."):
+            files.append(file)
+    return files
+
+
+class AUTOFILLS:
+    DIR: str = "{directory}"
+
+
 class ARGS:
-    SORTCHNUM: str = "sortchapternum"
-    SORTPGNUM: str = "sortpagenum"
-    HELP: str = "help"
-    CHREG: str = "chapter_regex="
-    PGREG: str = "page_regex="
-    PRESETCH: str = "chpreset="
-    PRESETPG: str = "pgpreset="
-    TEMPLATE: str = "template="
     IN: str = "in="
     OUT: str = "out="
+    CHREG: str = "chapter_regex="
+    PGREG: str = "page_regex="
+    SORTCHNUM: str = "sortchapternum"
+    SORTPGNUM: str = "sortpagenum"
+    PRESETCH: str = "chpreset="
+    PRESETPG: str = "pgpreset="
+    HELP: str = "help"
+    HTML: str = "html"
+    TEMPLATE: str = "template="
 
 
 class PRESETS:
@@ -23,7 +37,21 @@ class PRESETS:
     pg: dict[str, str] = {"1num": r"(?=\d)[\d\.]*"}
 
 
-help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO TO HTML (By LackoPotato :3)
+out_dirname = ""
+manga_path = ""
+out_path = ""
+
+chapter_expression = ""
+chapter_sort_number = False
+page_expression = ""
+page_sort_number = False
+template: str = os.path.join(os.path.dirname(sys.argv[0]), "template.html")
+image_tag_template: str = "<img src='{source}'>"
+export_as_html: bool = False
+
+
+help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
+        If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
 
         {ansi.font.bold}REQUIRED Arguments--{ansi.clear}
 
@@ -31,25 +59,22 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO TO HTML (By LackoPotato :3)
         \tThe input directory used
 
         {ansi.fore16.red}{ARGS.OUT}[path/to/output]{ansi.clear}
-        \tThe file it saves the HTML file and resources to
+        \tThe file it saves the output as [Including the filename!], use the format string {AUTOFILLS.DIR} to use the name of the input directory by default.
 
         {ansi.fore16.cyan}Optional Arguments--{ansi.clear}
 
         {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
-          \t Shows this help page
+        \tShows this help page
 
-        {ansi.fore16.red}{ARGS.SORTCHNUM}[regex expression]{ansi.clear}
-        \tThe Regular Expression used to mask the chapter directory name (used for sorting)
+        {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
+        \tExports the file as a HTML folder instead of a PDF
+        \tIf this argument is not added, exports as PDF by default
+
+        {ansi.fore16.red}{ARGS.SORTCHNUM}{ansi.clear}
+        \tSorts chapters numerically if possible
 
         {ansi.fore16.red}{ARGS.SORTPGNUM}{ansi.clear}
-        \tSorts pages numerically, raises Exception if fails to do so.
-
-        {ansi.fore16.red}{ARGS.TEMPLATE}[path/to/template]{ansi.clear}
-        \tThe template file used to make the output html file.
-        \tUSES PYTHON's STRING FORMATTING TO ADD
-        \t\t%images
-        \t\t\tImage elements in the manga
-        \tBy default this is ./template.html
+        \tSorts pages numerically if possible
 
         {ansi.fore16.red}{ARGS.CHREG}[regex expression]{ansi.clear}
         \tThe Regular Expression used to mask the chapter directory name (used for sorting)
@@ -75,29 +100,31 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO TO HTML (By LackoPotato :3)
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.pg["1num"]}
         \t\t\tGets the first number in the filename (example: Name of the Page 03 returns 03)
 
+        {ansi.fore16.cyan}HTML SPECIFIC --{ansi.clear}
 
-"""
+        {ansi.fore16.red}{ARGS.TEMPLATE}[path/to/template]{ansi.clear}
+        \tThe template file used to make the output html file.
+        \tUSES PYTHON's STRING FORMATTING TO ADD
+        \t\t%images
+        \t\t\tImage elements in the manga
+        \tBy default this is ./template.html
 
+    """
 
-manga_path = ""
-page_expression: str = ""
-out_path = ""
-chapter_expression: str = ""
-sortchapternum: bool = False
-sortpagenum: bool = False
-template: str = os.path.join(os.path.dirname(sys.argv[0]), "template.html")
 
 if len(sys.argv) == 1:
-    raise Exception(f"No arguments provided\n{help_string}")
+    raise Exception(f"No argument provided!\n\n{help_string}")
 
-for argument in sys.argv:
+for argument in sys.argv[1:]:
     match argument:
         case ARGS.SORTCHNUM:
-            sortchapternum = True
+            chapter_sort_number = True
         case ARGS.SORTPGNUM:
-            sortpagenum = True
+            page_sort_number = True
         case ARGS.HELP:
             raise Exception(help_string)
+        case ARGS.HTML:
+            export_as_html = True
         case _:
             if argument.startswith(ARGS.CHREG):
                 chapter_expression = argument.removeprefix(ARGS.CHREG)
@@ -123,7 +150,10 @@ for argument in sys.argv:
                 out_path = argument.removeprefix(ARGS.OUT)
             elif argument.startswith(ARGS.TEMPLATE):
                 template = argument.removeprefix(ARGS.TEMPLATE)
-
+            else:
+                raise Exception(
+                    f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
+                )
 
 if manga_path == "":
     raise Exception(ansi.qformat("Path to manga is not provided.", ansi.fore16.cyan))
@@ -140,7 +170,7 @@ elif not os.path.exists(os.path.dirname(manga_path)):
             ansi.fore16.cyan,
         )
     )
-elif not os.path.exists(template):
+elif export_as_html and not os.path.exists(template):
     raise Exception(
         ansi.qformat(f"Template file [{template}] does not exist", ansi.fore16.cyan)
     )
@@ -151,7 +181,7 @@ if (
     os.path.exists(out_path)
     and input(
         ansi.qformat(
-            f"Output directory [{out_path}] already exists! Continue anyways? (N/y) ",
+            f"Output file [{out_path}] already exists! Overwrite? (N/y) ",
             ansi.fore16.red,
         )
     )
@@ -168,25 +198,47 @@ image_paths = pages.read(
     manga_path,
     chapter_expression,
     page_expression,
-    sortpagenum,
-    sortchapternum,
+    page_sort_number,
+    chapter_sort_number,
 )
+images: list = []
 
-print(
-    f"{ansi.qformat('Writing ', ansi.fore16.cyan)}{ansi.qformat(str(len(image_paths)), ansi.fore16.red)}{ansi.qformat(' pages!')}"
-)
-html_page: str = open(template, "r").read()
-print(html_page)
-root_image_path: str = os.path.join(out_path, "img")
-image_tag_template: str = "<img src='{source}'>"
-image_tag_list: str = ""
-if not os.path.exists(root_image_path):
-    os.makedirs(root_image_path)
-for i, path in enumerate(image_paths):
-    filename = f"{i}{os.path.splitext(path)[1]}"
-    shutil.copy(path, os.path.join(root_image_path, filename))
-    image_tag_list += image_tag_template.format(source=os.path.join("./img", filename))
+if export_as_html:
+    html_page: str = open(template, "r").read()
+    root_image_path: str = os.path.join(out_path, "img")
+    image_tag_template: str = "<img src='{source}'>"
+    image_tag_list: str = ""
+    if not os.path.exists(root_image_path):
+        os.makedirs(root_image_path)
+    for i, path in enumerate(image_paths):
+        filename = f"{i}{os.path.splitext(path)[1]}"
+        shutil.copy(path, os.path.join(root_image_path, filename))
+        image_tag_list += image_tag_template.format(
+            source=os.path.join("./img", filename)
+        )
 
-with open(os.path.join(out_path, "index.html"), "w") as html_file:
-    html_file.write(html_page.replace("{text}", image_tag_list))
-print("DONE!")
+    with open(os.path.join(out_path, "index.html"), "w") as html_file:
+        html_file.write(html_page.replace("{text}", image_tag_list))
+else:
+    for page in image_paths:
+        print(ansi.qformat(f"\t{page}", ansi.fore16.red))
+        image = Image.open(page)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+            print("CONVERTING")
+        images.append(image.copy())
+
+    print(
+        ansi.qformat(
+            f"Making a PDF of {len(images)} pages at {out_path}", ansi.fore16.cyan
+        )
+    )
+
+    images[0].save(
+        out_path,
+        "PDF",
+        resolution=100.0,
+        save_all=True,
+        append_images=images[1:],
+    )
+print(ansi.qformat("DONE!!!", ansi.fore16.red, ansi.font.bold))

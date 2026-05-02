@@ -1,4 +1,5 @@
 from PIL import Image
+from PIL import ImageChops
 import ansi
 import os
 import sys
@@ -28,8 +29,13 @@ class ARGS:
     PRESETCH: str = "chpreset="
     PRESETPG: str = "pgpreset="
     HELP: str = "help"
+    OPTIMISE: str = "optimise"
+    GREYSCALE_THRESHOLD: str = "greyscale_threshold="
+    FORCE_GREYSCALE: str = "greyscale"
     HTML: str = "html"
     TEMPLATE: str = "template="
+    TAGTEMPLATE: str = "tag_template="
+    RESOLUTION: str = "resolution="
 
 
 class PRESETS:
@@ -48,7 +54,10 @@ page_sort_number = False
 template: str = os.path.join(os.path.dirname(sys.argv[0]), "template.html")
 image_tag_template: str = "<img src='{source}'>"
 export_as_html: bool = False
-
+optimise: bool = False
+greyscale_threshold: float = 0
+resolution: float = 100.0
+force_greyscale: bool = False
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -102,12 +111,34 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
 
         {ansi.fore16.cyan}HTML SPECIFIC --{ansi.clear}
 
-        {ansi.fore16.red}{ARGS.TEMPLATE}[path/to/template]{ansi.clear}
+        {ansi.fore16.red}{ARGS.TEMPLATE}[path/to/template]{ansi.clear} (default: {template})
         \tThe template file used to make the output html file.
         \tUSES PYTHON's STRING FORMATTING TO ADD
         \t\t%images
-        \t\t\tImage elements in the manga
-        \tBy default this is ./template.html
+        \t\t\tImage tags (or custom ones if {ansi.fore16.red}{ARGS.TAGTEMPLATE}{ansi.clear} is set)
+
+        {ansi.fore16.red}{ARGS.TAGTEMPLATE}[TAG TEMPLATE]{ansi.clear} (default: {image_tag_template})
+        \tThe template used to insert images into the HTML template
+        \tUSES PYTHON's STRING FORMATTING TO ADD
+        \t\t%source
+        \t\t\tPath to image element
+
+        {ansi.fore16.cyan}PDF SPECIFIC --{ansi.clear}
+        
+        {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.red)}
+        \tMarginal improvements during prelimary testing, ~20 MB reduction
+        \tOptimises the PDF by checking if the picture is greyscale (Despite being in a different format)
+        \tDone by converting it to greyscale (Mode L in PIL, 8 bit Greyscale)
+        \t\tGreyscale is defined by checking if the difference between each channel is less than the greyscale threshold (by default: {greyscale_threshold})
+
+        {ansi.fore16.red}{ARGS.GREYSCALE_THRESHOLD}[Value: float]{ansi.clear} (default: {greyscale_threshold})
+        \tOnly works if {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.blue)} is set!
+        \tThe threshold checks if an image is greyscale, comparing the difference in value between each channel in the image.
+        \tOnly converts to greyscale if it is less than the threshold.
+
+        {ansi.fore16.red}{ARGS.RESOLUTION}[Value: float]{ansi.clear} (default: {resolution})
+        \tChanges the PDF Export resolution
+        \tNumber between 0 and 100.
 
     """
 
@@ -123,12 +154,32 @@ for argument in sys.argv[1:]:
             page_sort_number = True
         case ARGS.HELP:
             raise Exception(help_string)
+        case ARGS.OPTIMISE:
+            optimise = True
         case ARGS.HTML:
             export_as_html = True
+        case ARGS.FORCE_GREYSCALE:
+            force_greyscale = True
         case _:
             if argument.startswith(ARGS.CHREG):
                 chapter_expression = argument.removeprefix(ARGS.CHREG)
-            elif argument.startswith(ARGS.PGREG):
+            elif argument.startswith(ARGS.GREYSCALE_THRESHOLD):
+                v: str = argument.removeprefix(ARGS.GREYSCALE_THRESHOLD)
+                try:
+                    greyscale_threshold = float(v)
+                except ValueError:
+                    raise ValueError(
+                        f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {v}"
+                    )
+            elif argument.startswith(ARGS.RESOLUTION):
+                v: str = argument.removeprefix(ARGS.RESOLUTION)
+                try:
+                    resolution = float(v)
+                except ValueError:
+                    raise ValueError(
+                        f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {v}"
+                    )
+            elif argument.startswith(ARGS.GREYSCALE_THRESHOLD):
                 page_expression = argument.removeprefix(ARGS.PGREG)
             elif argument.startswith(ARGS.PRESETCH):
                 preset: str = argument.removeprefix(ARGS.PRESETCH)
@@ -141,11 +192,13 @@ for argument in sys.argv[1:]:
                 preset: str = argument.removeprefix(ARGS.PRESETPG)
                 if preset not in PRESETS.pg:
                     raise Exception(
-                        f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
+                        f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
                     )
                 chapter_expression = PRESETS.pg[preset]
             elif argument.startswith(ARGS.IN):
                 manga_path = argument.removeprefix(ARGS.IN)
+            elif argument.startswith(ARGS.TAGTEMPLATE):
+                image_tag_template = argument.removeprefix(ARGS.TAGTEMPLATE)
             elif argument.startswith(ARGS.OUT):
                 out_path = argument.removeprefix(ARGS.OUT)
             elif argument.startswith(ARGS.TEMPLATE):
@@ -222,8 +275,35 @@ if export_as_html:
 else:
     for page in image_paths:
         print(ansi.qformat(f"\t{page}", ansi.fore16.red))
-        image = Image.open(page)
-        if image.mode != "RGB":
+        image: Image.Image = Image.open(page)
+        if force_greyscale:
+            if image.mode != "L":
+                image = image.convert("L")
+        elif optimise:
+            if image.mode != "L":
+                channels: list[Image.Image] = []
+                for i in range(len(image.getbands())):
+                    channels.append(image.getchannel(i))
+
+                color: bool = False
+                for channel in channels[1:]:
+                    extrema = ImageChops.difference(channels[0], channel).getextrema()[
+                        1
+                    ]
+                    print(f"\t\tDifference: {extrema}")
+                    if extrema > greyscale_threshold:
+                        color = True
+                        break
+                if color:
+                    if image.mode != "RGB":
+                        print("\t\t Color image not in RGB: Converting")
+                        image = image.convert("RGB")
+                else:
+                    print("\t\t Greyscale image: Converting")
+                    image = image.convert("L")
+            else:
+                print("\t\tAlready Greyscale")
+        elif image.mode != "RGB":
             image = image.convert("RGB")
             print("CONVERTING")
         images.append(image.copy())
@@ -237,7 +317,7 @@ else:
     images[0].save(
         out_path,
         "PDF",
-        resolution=100.0,
+        resolution=resolution,
         save_all=True,
         append_images=images[1:],
     )

@@ -1,10 +1,10 @@
 # Hakuneko Compiler!
 Turns downloaded Hakuneko Manga into PDF and HTML files!
 
-To print help pages run `python3 to-pdf.py` or `python3 to-html.py`!
+To print help page run `python3 compile.py help` or run the script (compile.py) without any arguments.
 
 Example Command (to-pdf):
-```to-pdf.py out="./{DIRECTORY}.pdf" chapter_regex="(?=\\d)[\\d\\.]*" page_regex="(?=\\d)[\\d\\.]*" sortchapternum sortpagenum in=```
+```python3 ./compiler.py out="./{DIRECTORY}.pdf" sortchapternum sortpagenum pgpreset=1num chpreset=ch in=```
 
 Depends on the Pillow Python Library: [Link](https://pypi.org/project/pillow/)
 

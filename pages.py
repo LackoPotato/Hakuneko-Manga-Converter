@@ -24,7 +24,11 @@ def regex_paths(expression: str, paths: list[str]) -> dict[str, str]:
             regexed_paths[path] = m[0]
         else:
             raise Exception(
-                f"Path {path} failed regex with expression {expression}")
+                ansi.qformat(
+                    f"Path {path} failed regex with expression {expression}",
+                    ansi.fore16.cyan,
+                )
+            )
     return regexed_paths
 
 
@@ -46,43 +50,54 @@ def read(
     page_expression: str = "",
     page_sort_number: bool = True,
     chapter_sort_number: bool = True,
+    single_chapter: bool = False,
 ) -> list[str]:
-    raw_chapter_paths: list[str] = get_directories(manga_path)
-
-    for i, chapter_path in enumerate(raw_chapter_paths):
-        print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {chapter_path}")
-
-    chapter_paths: dict[str, str] = {}
-    if chapter_expression:
-        chapter_paths = regex_paths(chapter_expression, raw_chapter_paths)
-        print(f"{ansi.fore16.cyan}Masked Names: ")
-        for i, chapter_path in enumerate(chapter_paths):
-            print(
-                f"\t{ansi.fore16.red}{i}{ansi.clear} {chapter_paths[chapter_path]}")
-    else:
-        chapter_paths = {dir: dir for dir in raw_chapter_paths}
-
-    print(
-        ansi.qformat(
-            "Sorting by float" if page_sort_number else "Sorting by string",
-            ansi.fore16.cyan,
-        )
-    )
     sorted_chapter_keys: list[str] = []
-    if chapter_sort_number:
-        sorted_chapter_keys = numsort(chapter_paths)
+    chapter_paths: dict[str, str] = {}
+    if single_chapter:
+        sorted_chapter_keys = [manga_path]
+        chapter_paths = {manga_path: manga_path}
     else:
-        sorted_chapter_keys = alphasort(chapter_paths)
+        raw_chapter_paths: list[str] = get_directories(manga_path)
+        if len(raw_chapter_paths):
+            for i, chapter_path in enumerate(raw_chapter_paths):
+                print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {chapter_path}")
 
+            if chapter_expression:
+                chapter_paths = regex_paths(
+                    chapter_expression, raw_chapter_paths)
+                print(f"{ansi.fore16.cyan}Masked Names: ")
+                for i, chapter_path in enumerate(chapter_paths):
+                    print(
+                        f"\t{ansi.fore16.red}{i}{ansi.clear} {chapter_paths[chapter_path]}"
+                    )
+            else:
+                chapter_paths = {
+                    dir: os.path.join(manga_path, dir) for dir in raw_chapter_paths
+                }
+            print(
+                ansi.qformat(
+                    "Sorting by float" if page_sort_number else "Sorting by string",
+                    ansi.fore16.cyan,
+                )
+            )
+            if chapter_sort_number:
+                sorted_chapter_keys = numsort(chapter_paths)
+            else:
+                sorted_chapter_keys = alphasort(chapter_paths)
+        else:
+            raise Exception(
+                f'{ansi.fore16.cyan}Path "{manga_path}" has no chapters! If you want to compile a single chapter, use the argument singlechapter {ansi.clear}'
+            )
     manga_pages: list[dict] = []
-
     for chapter in sorted_chapter_keys:
         print(f"{ansi.qformat('Chapter Title: ', ansi.fore16.cyan)}{chapter}")
         print(
             f"{ansi.qformat('Chapter Path: ', ansi.fore16.cyan)}{chapter_paths[chapter]}"
         )
-        chapter_path: str = os.path.join(manga_path, chapter)
+        chapter_path: str = chapter_paths[chapter]
         page_paths: dict[str, str] = {}
+
         if page_expression:
             page_paths = {
                 os.path.join(chapter_path, page): os.path.splitext(page)[0]

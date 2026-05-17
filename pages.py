@@ -25,7 +25,7 @@ def regex_paths(expression: str, paths: list[str]) -> dict[str, str]:
         else:
             raise Exception(
                 ansi.qformat(
-                    f"Path {path} failed regex with expression {expression}",
+                    f'Path "{path}" failed regex with expression {expression}',
                     ansi.fore16.cyan,
                 )
             )
@@ -34,7 +34,16 @@ def regex_paths(expression: str, paths: list[str]) -> dict[str, str]:
 
 def numsort(sort: dict[str, str]) -> list[str]:
     keys: list[str] = list(sort)
-    keys.sort(key=lambda k: float(sort[k]))
+    try:
+        keys.sort(key=lambda k: float(sort[k]))
+    except ValueError:
+        raise ValueError(
+            ansi.qformat(
+                "Sorting by number failed! Try applying a regex, preset or removing the sort argument.\nFailed on: \n",
+                ansi.fore16.red,
+            )
+            + str(sort)
+        )
     return keys
 
 
@@ -64,17 +73,14 @@ def read(
                 print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {chapter_path}")
 
             if chapter_expression:
-                chapter_paths = regex_paths(
-                    chapter_expression, raw_chapter_paths)
+                chapter_paths = regex_paths(chapter_expression, raw_chapter_paths)
                 print(f"{ansi.fore16.cyan}Masked Names: ")
                 for i, chapter_path in enumerate(chapter_paths):
                     print(
                         f"\t{ansi.fore16.red}{i}{ansi.clear} {chapter_paths[chapter_path]}"
                     )
             else:
-                chapter_paths = {
-                    dir: os.path.join(manga_path, dir) for dir in raw_chapter_paths
-                }
+                chapter_paths = {dir: dir for dir in raw_chapter_paths}
             print(
                 ansi.qformat(
                     "Sorting by float" if page_sort_number else "Sorting by string",
@@ -92,10 +98,10 @@ def read(
     manga_pages: list[dict] = []
     for chapter in sorted_chapter_keys:
         print(f"{ansi.qformat('Chapter Title: ', ansi.fore16.cyan)}{chapter}")
-        print(
-            f"{ansi.qformat('Chapter Path: ', ansi.fore16.cyan)}{chapter_paths[chapter]}"
-        )
-        chapter_path: str = chapter_paths[chapter]
+        chapter_path: str = manga_path
+        if not single_chapter:
+            chapter_path = os.path.join(manga_path, chapter)
+        print(f"{ansi.qformat('Chapter Path: ', ansi.fore16.cyan)}{chapter_path}")
         page_paths: dict[str, str] = {}
 
         if page_expression:

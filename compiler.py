@@ -1,4 +1,3 @@
-from math import sin
 from PIL import Image
 from PIL import ImageChops
 import ansi
@@ -38,6 +37,7 @@ class ARGS:
     TAGTEMPLATE: str = "tag_template"
     RESOLUTION: str = "resolution"
     SINGLE_CHAPTER: str = "singlechapter"
+    QUALITY: str = "quality"
 
 
 class PRESETS:
@@ -61,6 +61,7 @@ greyscale_threshold: float = 0
 resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
+quality: int = 75
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -144,9 +145,12 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tOnly converts to greyscale if it is less than the threshold.
 
         {ansi.fore16.red}{ARGS.RESOLUTION}=[Value: float]{ansi.clear} (default: {resolution})
-        \tChanges the PDF Export resolution
-        \tNumber between 0 and 100.
+        \tChanges the PDF Export resolution (The size of the PDF file in the reader, not actual PDF quality, see {ansi.qformat(ARGS.QUALITY, ansi.fore16.blue)})
+        \tNumber more than 0.
 
+        {ansi.fore16.red}{ARGS.QUALITY}=[Value: integer]{ansi.clear} (default: {quality})
+        \tChanges the PDF Export quality
+        \tNumber between 0 and 100.
     """
 
 
@@ -172,34 +176,47 @@ for argument in sys.argv[1:]:
         case _:
             if "=" in argument:
                 stripped_argument: str = argument[: argument.find("=")]
-                value: str = argument[argument.find("=") + 1:]
+                value: str = argument[argument.find("=") + 1 :]
                 match stripped_argument:
                     case ARGS.CHREG:
                         chapter_expression = value
                     case ARGS.GREYSCALE_THRESHOLD:
-                        v: str = value
                         try:
-                            greyscale_threshold = float(v)
+                            greyscale_threshold = float(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {v}"
+                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {value}"
+                            )
+                    case ARGS.QUALITY:
+                        try:
+                            quality = int(value)
+                        except ValueError:
+                            raise ValueError(
+                                f"{ansi.qformat(f'{ARGS.QUALITY} is not an integer: ', ansi.fore16.red)} {value}"
                             )
                     case ARGS.RESOLUTION:
-                        v: str = value
                         try:
-                            resolution = float(v)
+                            resolution = float(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {v}"
+                                f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {value}"
                             )
                     case ARGS.GREYSCALE_THRESHOLD:
-                        page_expression = argument.removeprefix(ARGS.PGREG)
+                        try:
+                            greyscale_threshold = int(value)
+                        except ValueError:
+                            raise ValueError(
+                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not an integer: ', ansi.fore16.red)} {value}"
+                            )
                     case ARGS.PRESETCH:
                         preset = value
                         if preset not in PRESETS.ch:
                             raise Exception(
                                 f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.ch.keys()}"
                             )
+                        print(
+                            f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{preset}"'
+                        )
                         chapter_expression = PRESETS.ch[preset]
                     case ARGS.PRESETPG:
                         preset: str = value
@@ -207,7 +224,10 @@ for argument in sys.argv[1:]:
                             raise Exception(
                                 f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
                             )
-                        chapter_expression = PRESETS.pg[preset]
+                        print(
+                            f'{ansi.qformat("Page Preset: ", ansi.fore16.cyan)}"{preset}"'
+                        )
+                        page_expression = PRESETS.pg[preset]
                     case ARGS.IN:
                         manga_path = value
                     case ARGS.TAGTEMPLATE:
@@ -226,16 +246,13 @@ for argument in sys.argv[1:]:
                 )
 
 if manga_path == "":
-    raise Exception(ansi.qformat(
-        "Path to manga is not provided.", ansi.fore16.cyan))
+    raise Exception(ansi.qformat("Path to manga is not provided.", ansi.fore16.cyan))
 elif not os.path.exists(manga_path):
     raise Exception(
-        ansi.qformat(
-            f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
+        ansi.qformat(f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
     )
 elif out_path == "":
-    raise Exception(ansi.qformat(
-        "No output path is provided", ansi.fore16.cyan))
+    raise Exception(ansi.qformat("No output path is provided", ansi.fore16.cyan))
 elif not os.path.exists(os.path.dirname(manga_path)):
     raise Exception(
         ansi.qformat(
@@ -245,12 +262,10 @@ elif not os.path.exists(os.path.dirname(manga_path)):
     )
 elif export_as_html and not os.path.exists(template):
     raise Exception(
-        ansi.qformat(
-            f"Template file [{template}] does not exist", ansi.fore16.cyan)
+        ansi.qformat(f"Template file [{template}] does not exist", ansi.fore16.cyan)
     )
 
-out_path = out_path.format(
-    DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
+out_path = out_path.format(DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
 
 if (
     os.path.exists(out_path)
@@ -343,5 +358,6 @@ else:
         resolution=resolution,
         save_all=True,
         append_images=images[1:],
+        quality=quality,
     )
 print(ansi.qformat("DONE!!!", ansi.fore16.red, ansi.font.bold))

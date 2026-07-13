@@ -38,10 +38,19 @@ class ARGS:
     RESOLUTION: str = "resolution"
     SINGLE_CHAPTER: str = "singlechapter"
     QUALITY: str = "quality"
+    STANDARD_REGEX: str = "standard_regex"
+
+# PRESETS
+# To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
+# ignore[] preset, Based off of this StackOverflow answer by Wiktor Stribiżew: https://stackoverflow.com/a/76529927
 
 
 class PRESETS:
-    ch: dict[str, str] = {"ch": r"(?<=Ch.)[\d\.]*", "1num": r"(?=\d)[\d\.]*"}
+    ch: dict[str, str] = {
+        "ch": r"(?<=Ch.)[\d\.]*",
+        "ignore[]": r"((?=\d)[\d\.]*)(?!(?<=\[[^][]*)[^][]*])",
+        "1num": r"(?=\d)[\d\.]*"
+    }
     pg: dict[str, str] = {"1num": r"(?=\d)[\d\.]*"}
 
 
@@ -62,6 +71,7 @@ resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
+standard_regex: bool = False
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -78,6 +88,9 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
 
         {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
         \tShows this help page
+
+        {ansi.fore16.red}{ARGS.STANDARD_REGEX}{ansi.clear}
+        \tUses the Python Standard Regex implementation which does not support certain features required by some presets. Enable if you don't have the alternative PyPi regex implementation (https://pypi.org/project/regex/) installed.
 
         {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
         \tExports the file as a HTML folder instead of a PDF
@@ -102,6 +115,10 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \t\tch
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ch"]}
         \t\t\tGets the first number after Ch. in the directory name (example: Vol 2 Ch.01 returns 01)
+
+        \t\tignore[] (does not work with the {ansi.fore16.red}{ARGS.STANDARD_REGEX}{ansi.clear} option)
+        \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ignore[]"]}
+        \t\t\tExcludes any result in between square brackets (example: [Vol 1] Hunting Potatoes Chapter 1 returns 1)
 
         \t\t1num
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["1num"]}
@@ -173,10 +190,12 @@ for argument in sys.argv[1:]:
             force_greyscale = True
         case ARGS.SINGLE_CHAPTER:
             single_chapter = True
+        case ARGS.STANDARD_REGEX:
+            standard_regex = True
         case _:
             if "=" in argument:
                 stripped_argument: str = argument[: argument.find("=")]
-                value: str = argument[argument.find("=") + 1 :]
+                value: str = argument[argument.find("=") + 1:]
                 match stripped_argument:
                     case ARGS.CHREG:
                         chapter_expression = value
@@ -185,47 +204,55 @@ for argument in sys.argv[1:]:
                             greyscale_threshold = float(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {value}"
+                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {
+                                    value}"
                             )
                     case ARGS.QUALITY:
                         try:
                             quality = int(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.QUALITY} is not an integer: ', ansi.fore16.red)} {value}"
+                                f"{ansi.qformat(f'{ARGS.QUALITY} is not an integer: ', ansi.fore16.red)} {
+                                    value}"
                             )
                     case ARGS.RESOLUTION:
                         try:
                             resolution = float(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {value}"
+                                f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {
+                                    value}"
                             )
                     case ARGS.GREYSCALE_THRESHOLD:
                         try:
                             greyscale_threshold = int(value)
                         except ValueError:
                             raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not an integer: ', ansi.fore16.red)} {value}"
+                                f"{ansi.qformat(
+                                    f'{ARGS.GREYSCALE_THRESHOLD} is not an integer: ', ansi.fore16.red)} {value}"
                             )
                     case ARGS.PRESETCH:
                         preset = value
                         if preset not in PRESETS.ch:
                             raise Exception(
-                                f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.ch.keys()}"
+                                f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{
+                                    preset}, available: {PRESETS.ch.keys()}"
                             )
                         print(
-                            f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{preset}"'
+                            f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{
+                                preset}"'
                         )
                         chapter_expression = PRESETS.ch[preset]
                     case ARGS.PRESETPG:
                         preset: str = value
                         if preset not in PRESETS.pg:
                             raise Exception(
-                                f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{preset}, available: {PRESETS.pg.keys()}"
+                                f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{
+                                    preset}, available: {PRESETS.pg.keys()}"
                             )
                         print(
-                            f'{ansi.qformat("Page Preset: ", ansi.fore16.cyan)}"{preset}"'
+                            f'{ansi.qformat("Page Preset: ", ansi.fore16.cyan)}"{
+                                preset}"'
                         )
                         page_expression = PRESETS.pg[preset]
                     case ARGS.IN:
@@ -238,21 +265,26 @@ for argument in sys.argv[1:]:
                         template = value
                     case _:
                         raise Exception(
-                            f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
+                            f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {
+                                ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
                         )
             else:
                 raise Exception(
-                    f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
+                    f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {
+                        ansi.qformat(ARGS.HELP, ansi.fore16.blue)} if you want to view the help page"
                 )
 
 if manga_path == "":
-    raise Exception(ansi.qformat("Path to manga is not provided.", ansi.fore16.cyan))
+    raise Exception(ansi.qformat(
+        "Path to manga is not provided.", ansi.fore16.cyan))
 elif not os.path.exists(manga_path):
     raise Exception(
-        ansi.qformat(f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
+        ansi.qformat(
+            f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
     )
 elif out_path == "":
-    raise Exception(ansi.qformat("No output path is provided", ansi.fore16.cyan))
+    raise Exception(ansi.qformat(
+        "No output path is provided", ansi.fore16.cyan))
 elif not os.path.exists(os.path.dirname(manga_path)):
     raise Exception(
         ansi.qformat(
@@ -262,10 +294,12 @@ elif not os.path.exists(os.path.dirname(manga_path)):
     )
 elif export_as_html and not os.path.exists(template):
     raise Exception(
-        ansi.qformat(f"Template file [{template}] does not exist", ansi.fore16.cyan)
+        ansi.qformat(
+            f"Template file [{template}] does not exist", ansi.fore16.cyan)
     )
 
-out_path = out_path.format(DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
+out_path = out_path.format(
+    DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
 
 if (
     os.path.exists(out_path)
@@ -280,7 +314,8 @@ if (
     raise Exception(ansi.qformat("Aborted", ansi.fore16.cyan))
 
 print(
-    f"{ansi.qformat('Writing file: ', ansi.fore16.cyan)}{out_path}\n{ansi.qformat('Reading Manga Directory: ', ansi.fore16.cyan)}{manga_path}"
+    f"{ansi.qformat('Writing file: ', ansi.fore16.cyan)}{out_path}\n{
+        ansi.qformat('Reading Manga Directory: ', ansi.fore16.cyan)}{manga_path}"
 )
 
 print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
@@ -329,7 +364,8 @@ else:
                         1
                     ]
                     print(f"\t\tDifference: {extrema}")
-                    if extrema > greyscale_threshold:
+                    # Checking if float even though it is not required (is a single-band image and will always be a float), done so to make pyright happy
+                    if extrema is float and extrema > greyscale_threshold:
                         color = True
                         break
                 if color:
@@ -348,7 +384,8 @@ else:
 
     print(
         ansi.qformat(
-            f"Making a PDF of {len(images)} pages at {out_path}", ansi.fore16.cyan
+            f"Making a PDF of {len(images)} pages at {
+                out_path}", ansi.fore16.cyan
         )
     )
 

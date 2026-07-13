@@ -1,5 +1,4 @@
 import os
-import re
 import ansi
 
 
@@ -70,14 +69,17 @@ def read(
         raw_chapter_paths: list[str] = get_directories(manga_path)
         if len(raw_chapter_paths):
             for i, chapter_path in enumerate(raw_chapter_paths):
-                print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {chapter_path}")
+                print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {
+                      chapter_path}")
 
             if chapter_expression:
-                chapter_paths = regex_paths(chapter_expression, raw_chapter_paths)
+                chapter_paths = regex_paths(
+                    chapter_expression, raw_chapter_paths)
                 print(f"{ansi.fore16.cyan}Masked Names: ")
                 for i, chapter_path in enumerate(chapter_paths):
                     print(
-                        f"\t{ansi.fore16.red}{i}{ansi.clear} {chapter_paths[chapter_path]}"
+                        f"\t{ansi.fore16.red}{i}{ansi.clear} {
+                            chapter_paths[chapter_path]}"
                     )
             else:
                 chapter_paths = {dir: dir for dir in raw_chapter_paths}
@@ -93,7 +95,8 @@ def read(
                 sorted_chapter_keys = alphasort(chapter_paths)
         else:
             raise Exception(
-                f'{ansi.fore16.cyan}Path "{manga_path}" has no chapters! If you want to compile a single chapter, use the argument singlechapter {ansi.clear}'
+                f'{ansi.fore16.cyan}Path "{
+                    manga_path}" has no chapters! If you want to compile a single chapter, use the argument singlechapter {ansi.clear}'
             )
     manga_pages: list[dict] = []
     for chapter in sorted_chapter_keys:

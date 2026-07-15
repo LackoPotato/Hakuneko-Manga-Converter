@@ -11,6 +11,19 @@ def listdir(path: str) -> list[str]:
     return files
 
 
+def auto_try_regex(regex: list[str], paths: list[str]) -> str | None:
+    print(ansi.qformat(f"Trying regex: {regex}", ansi.fore16.cyan))
+    for expression in regex:
+        print(f"\t{expression}")
+        r = re.compile(expression)
+        for path in paths:
+            if r.search(path):
+                print(ansi.qformat(f"Found working regex: {
+                      expression}", ansi.fore16.cyan))
+                return expression
+    return None
+
+
 def get_directories(path: str) -> list[str]:
     return [dir for dir in listdir(path) if os.path.isdir(os.path.join(path, dir))]
 
@@ -60,6 +73,8 @@ def read(
     page_sort_number: bool = True,
     chapter_sort_number: bool = True,
     single_chapter: bool = False,
+    auto_sort_chapter: bool = False,
+    auto_sort_chapter_regex: list[str] = [],
 ) -> list[str]:
     sorted_chapter_keys: list[str] = []
     chapter_paths: dict[str, str] = {}
@@ -72,6 +87,19 @@ def read(
             for i, chapter_path in enumerate(raw_chapter_paths):
                 print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {
                       chapter_path}")
+
+            if auto_sort_chapter:
+                print(ansi.qformat(
+                    f"Trying to auto-sort chapters with the following: {auto_sort_chapter_regex}", ansi.fore16.cyan))
+                sort_result = auto_try_regex(
+                    auto_sort_chapter_regex, raw_chapter_paths)
+                if sort_result:
+                    chapter_expression = sort_result
+                else:
+                    raise Exception(
+                        f'{ansi.fore16.cyan} "{
+                            manga_path}" failed the auto-regex!{ansi.clear}'
+                    )
 
             if chapter_expression:
                 chapter_paths = regex_paths(

@@ -40,6 +40,7 @@ class ARGS:
     RESOLUTION: str = "resolution"
     SINGLE_CHAPTER: str = "singlechapter"
     QUALITY: str = "quality"
+    MULTIPLE: str = "multiple"
 
 # PRESETS
 # To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
@@ -47,6 +48,7 @@ class ARGS:
 
 
 class PRESETS:
+    AUTO: str = "auto"
     ch: dict[str, str] = {
         "ch": r"(?<=Ch.)[\d\.]*",
         "ignore[]": r"((?=\d)[\d\.]*)(?!(?<=\[[^][]*)[^][]*])",
@@ -73,6 +75,9 @@ force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
 
+auto_try_chapter_presets: bool = False
+auto_try_page_presets: bool = False
+
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
 
@@ -90,6 +95,10 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tShows this help page
 
         {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
+        \tExports the file as a HTML folder instead of a PDF
+        \tIf this argument is not added, exports as PDF by default
+
+        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
         \tExports the file as a HTML folder instead of a PDF
         \tIf this argument is not added, exports as PDF by default
 
@@ -111,7 +120,7 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tPresets Options:
         \t\tauto
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: None, is a special preset
-        \t\t\tAutomatically tries all presets in the order [ch, ignore[], 1num]. On failing to sort, it instead switches to the next preset and tries again.
+        \t\t\tAutomatically tries all presets in the order {PRESETS.ch.keys()}. On failing to sort, it instead switches to the next preset and tries again.
 
         \t\tch
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ch"]}
@@ -152,7 +161,7 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         {ansi.fore16.cyan}PDF SPECIFIC --{ansi.clear}
 
         {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.red)}
-        \tMarginal improvements during prelimary testing, ~20 MB reduction
+        \tMarginal improvements during testing
         \tOptimises the PDF by checking if the picture is greyscale (Despite being in a different format)
         \tDone by converting it to greyscale (Mode L in PIL, 8 bit Greyscale)
         \t\tGreyscale is defined by checking if the difference between each channel is less than the greyscale threshold (by default: {greyscale_threshold})
@@ -232,28 +241,36 @@ for argument in sys.argv[1:]:
                             )
                     case ARGS.PRESETCH:
                         preset = value
-                        if preset not in PRESETS.ch:
-                            raise Exception(
-                                f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{
-                                    preset}, available: {PRESETS.ch.keys()}"
-                            )
+                        if preset == PRESETS.AUTO:
+                            auto_try_chapter_presets = True
+                        else:
+                            if not (preset in PRESETS.ch):
+                                raise Exception(
+                                    f"{ansi.qformat('Unknown chapter preset: ', ansi.fore16.red)}{
+                                        preset}, available: {PRESETS.ch.keys()} or {PRESETS.AUTO}"
+                                )
+                            chapter_expression = PRESETS.ch[preset]
+
                         print(
                             f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{
                                 preset}"'
                         )
-                        chapter_expression = PRESETS.ch[preset]
                     case ARGS.PRESETPG:
-                        preset: str = value
-                        if preset not in PRESETS.pg:
-                            raise Exception(
-                                f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{
-                                    preset}, available: {PRESETS.pg.keys()}"
-                            )
+                        preset = value
+                        if preset == PRESETS.AUTO:
+                            auto_try_page_presets = True
+                        else:
+                            if not (preset in PRESETS.pg):
+                                raise Exception(
+                                    f"{ansi.qformat('Unknown page preset: ', ansi.fore16.red)}{
+                                        preset}, available: {PRESETS.pg.keys()} or {PRESETS.AUTO}"
+                                )
+                            page_expression = PRESETS.pg[preset]
+
                         print(
-                            f'{ansi.qformat("Page Preset: ", ansi.fore16.cyan)}"{
+                            f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{
                                 preset}"'
                         )
-                        page_expression = PRESETS.pg[preset]
                     case ARGS.IN:
                         manga_path = value
                     case ARGS.TAGTEMPLATE:
@@ -317,6 +334,7 @@ print(
         ansi.qformat('Reading Manga Directory: ', ansi.fore16.cyan)}{manga_path}"
 )
 
+auto_sort_chapter_presets = [PRESETS.ch[key] for key in PRESETS.ch.keys()]
 print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
 image_paths = pages.read(
     manga_path,
@@ -325,6 +343,9 @@ image_paths = pages.read(
     page_sort_number,
     chapter_sort_number,
     single_chapter,
+    auto_try_chapter_presets,
+    auto_sort_chapter_presets
+
 )
 images: list = []
 

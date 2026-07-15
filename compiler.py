@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from PIL import Image
 from PIL import ImageChops
 import ansi
@@ -38,7 +40,6 @@ class ARGS:
     RESOLUTION: str = "resolution"
     SINGLE_CHAPTER: str = "singlechapter"
     QUALITY: str = "quality"
-    STANDARD_REGEX: str = "standard_regex"
 
 # PRESETS
 # To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
@@ -71,7 +72,6 @@ resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
-standard_regex: bool = False
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -88,9 +88,6 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
 
         {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
         \tShows this help page
-
-        {ansi.fore16.red}{ARGS.STANDARD_REGEX}{ansi.clear}
-        \tUses the Python Standard Regex implementation which does not support certain features required by some presets. Enable if you don't have the alternative PyPi regex implementation (https://pypi.org/project/regex/) installed.
 
         {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
         \tExports the file as a HTML folder instead of a PDF
@@ -112,11 +109,15 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
 
         {ansi.fore16.red}{ARGS.PRESETCH}=[Chapter Preset Option]{ansi.clear}
         \tPresets Options:
+        \t\tauto
+        \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: None, is a special preset
+        \t\t\tAutomatically tries all presets in the order [ch, ignore[], 1num]. On failing to sort, it instead switches to the next preset and tries again.
+
         \t\tch
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ch"]}
         \t\t\tGets the first number after Ch. in the directory name (example: Vol 2 Ch.01 returns 01)
 
-        \t\tignore[] (does not work with the {ansi.fore16.red}{ARGS.STANDARD_REGEX}{ansi.clear} option)
+        \t\tignore[]
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ignore[]"]}
         \t\t\tExcludes any result in between square brackets (example: [Vol 1] Hunting Potatoes Chapter 1 returns 1)
 
@@ -157,12 +158,12 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \t\tGreyscale is defined by checking if the difference between each channel is less than the greyscale threshold (by default: {greyscale_threshold})
 
         {ansi.fore16.red}{ARGS.GREYSCALE_THRESHOLD}=[Value: float]{ansi.clear} (default: {greyscale_threshold})
-        \tOnly works if {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.blue)} is set!
+        \tOnly works if {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.red)} is set!
         \tThe threshold checks if an image is greyscale, comparing the difference in value between each channel in the image.
         \tOnly converts to greyscale if it is less than the threshold.
 
         {ansi.fore16.red}{ARGS.RESOLUTION}=[Value: float]{ansi.clear} (default: {resolution})
-        \tChanges the PDF Export resolution (The size of the PDF file in the reader, not actual PDF quality, see {ansi.qformat(ARGS.QUALITY, ansi.fore16.blue)})
+        \tChanges the PDF Export resolution (The size of the PDF file in the reader, not actual PDF quality, see {ansi.qformat(ARGS.QUALITY, ansi.fore16.red)})
         \tNumber more than 0.
 
         {ansi.fore16.red}{ARGS.QUALITY}=[Value: integer]{ansi.clear} (default: {quality})
@@ -190,8 +191,6 @@ for argument in sys.argv[1:]:
             force_greyscale = True
         case ARGS.SINGLE_CHAPTER:
             single_chapter = True
-        case ARGS.STANDARD_REGEX:
-            standard_regex = True
         case _:
             if "=" in argument:
                 stripped_argument: str = argument[: argument.find("=")]

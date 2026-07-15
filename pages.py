@@ -1,5 +1,6 @@
 import os
 import ansi
+import regex as re
 
 
 def listdir(path: str) -> list[str]:

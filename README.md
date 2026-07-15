@@ -8,8 +8,6 @@ Example Command (to-pdf):
 
 # Depends on the  
 \tPillow Python Library: [Link](https://pypi.org/project/pillow/)  
-
-## Optional Dependencies:
-\tRegex Library: [Link](https://pypi.org/project/regex/) (To use this program without, use the argument standard_regex)
+\tRegex Library: [Link](https://pypi.org/project/regex/)
 
 

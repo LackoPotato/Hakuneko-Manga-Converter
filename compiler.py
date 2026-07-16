@@ -74,6 +74,7 @@ resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
+pdf_page_batch_size: int = 10
 
 auto_try_chapter_presets: bool = False
 auto_try_page_presets: bool = False
@@ -268,7 +269,7 @@ for argument in sys.argv[1:]:
                             page_expression = PRESETS.pg[preset]
 
                         print(
-                            f'{ansi.qformat("Chapter Preset: ", ansi.fore16.cyan)}"{
+                            f'{ansi.qformat("Page Preset: ", ansi.fore16.cyan)}"{
                                 preset}"'
                         )
                     case ARGS.IN:
@@ -349,6 +350,57 @@ image_paths = pages.read(
 )
 images: list = []
 
+
+def image_conversion(image: Image.Image) -> Image.Image:
+    global force_greyscale
+    global optimise
+    global greyscale_threshold
+    if force_greyscale:
+        if image.mode != "L":
+            return image.convert("L")
+    elif optimise:
+        if image.mode != "L":
+            channels: list[Image.Image] = []
+            for i in range(len(image.getbands())):
+                channels.append(image.getchannel(i))
+            color: bool = False
+            for channel in channels[1:]:
+                extrema = ImageChops.difference(channels[0], channel).getextrema()[
+                    1
+                ]
+                print(f"\t\tDifference: {extrema}")
+                # Checking if float even though it is not required (is a single-band image and will always be a float), done so to make pyright happy
+                if extrema is float and extrema > greyscale_threshold:
+                    color = True
+                    break
+            if color:
+                if image.mode != "RGB":
+                    print("\t\t Color image not in RGB: Converting")
+                    return image.convert("RGB")
+            else:
+                print("\t\t Greyscale image: Converting")
+                return image.convert("L")
+        else:
+            print("\t\tAlready Greyscale")
+    elif image.mode != "RGB":
+        print("CONVERTING TO RGB")
+        return image.convert("RGB")
+    return image
+
+
+def pdf_append(images: list[Image.Image]) -> None:
+    global quality
+    global resolution
+    images[0].save(
+        out_path,
+        "PDF",
+        resolution=resolution,
+        append=True,
+        append_images=images[1:],
+        quality=quality,
+    )
+
+
 if export_as_html:
     html_page: str = open(template, "r").read()
     root_image_path: str = os.path.join(out_path, "img")
@@ -366,55 +418,29 @@ if export_as_html:
     with open(os.path.join(out_path, "index.html"), "w") as html_file:
         html_file.write(html_page.replace("{text}", image_tag_list))
 else:
-    for page in image_paths:
-        print(ansi.qformat(f"\t{page}", ansi.fore16.red))
-        image: Image.Image = Image.open(page)
-        if force_greyscale:
-            if image.mode != "L":
-                image = image.convert("L")
-        elif optimise:
-            if image.mode != "L":
-                channels: list[Image.Image] = []
-                for i in range(len(image.getbands())):
-                    channels.append(image.getchannel(i))
-
-                color: bool = False
-                for channel in channels[1:]:
-                    extrema = ImageChops.difference(channels[0], channel).getextrema()[
-                        1
-                    ]
-                    print(f"\t\tDifference: {extrema}")
-                    # Checking if float even though it is not required (is a single-band image and will always be a float), done so to make pyright happy
-                    if extrema is float and extrema > greyscale_threshold:
-                        color = True
-                        break
-                if color:
-                    if image.mode != "RGB":
-                        print("\t\t Color image not in RGB: Converting")
-                        image = image.convert("RGB")
-                else:
-                    print("\t\t Greyscale image: Converting")
-                    image = image.convert("L")
-            else:
-                print("\t\tAlready Greyscale")
-        elif image.mode != "RGB":
-            image = image.convert("RGB")
-            print("CONVERTING")
-        images.append(image.copy())
-
     print(
         ansi.qformat(
-            f"Making a PDF of {len(images)} pages at {
+            f"Making a PDF of {len(image_paths)} pages at {
                 out_path}", ansi.fore16.cyan
         )
     )
+    with image_conversion(Image.open(image_paths[0])) as export:
+        export.save(
+            out_path,
+            "PDF",
+            resolution=resolution,
+            quality=quality,
+        )
+    images_to_append: list[Image.Image] = []
+    for page in image_paths[1:]:
+        print(ansi.qformat(f"\t{page}", ansi.fore16.red))
+        images_to_append.append(image_conversion(Image.open(page)).copy())
+        if len(images_to_append) >= pdf_page_batch_size:
+            print(images_to_append)
+            pdf_append(images_to_append)
+            images_to_append.clear()
+    if images_to_append:
+        pdf_append(images_to_append)
 
-    images[0].save(
-        out_path,
-        "PDF",
-        resolution=resolution,
-        save_all=True,
-        append_images=images[1:],
-        quality=quality,
-    )
+
 print(ansi.qformat("DONE!!!", ansi.fore16.red, ansi.font.bold))

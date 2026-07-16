@@ -114,7 +114,7 @@ def read(
                 chapter_paths = {dir: dir for dir in raw_chapter_paths}
             print(
                 ansi.qformat(
-                    "Sorting by float" if page_sort_number else "Sorting by string",
+                    "Sorting Chapters numerically" if chapter_sort_number else "Sorting Chapters alphabetically",
                     ansi.fore16.cyan,
                 )
             )
@@ -137,9 +137,11 @@ def read(
         page_paths: dict[str, str] = {}
 
         if page_expression:
+            regexed_pages: dict[str, str] = regex_paths(
+                page_expression, listdir(chapter_path))
             page_paths = {
-                os.path.join(chapter_path, page): os.path.splitext(page)[0]
-                for page in regex_paths(page_expression, listdir(chapter_path))
+                os.path.join(chapter_path, page): regexed_pages[page]
+                for page in regexed_pages
             }
         else:
             page_paths = {
@@ -148,9 +150,17 @@ def read(
             }
         manga_pages.append(page_paths)
 
+    print(
+        ansi.qformat(
+            "Sorting Pages numerically" if page_sort_number else "Sorting Pages alphabetically",
+            ansi.fore16.cyan,
+        )
+    )
+
     images = []
     for chapter in manga_pages:
         page_key_sort: list[str] = []
+
         if page_sort_number:
             page_key_sort = numsort(chapter)
         else:

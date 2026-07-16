@@ -78,6 +78,7 @@ def read(
 ) -> list[str]:
     sorted_chapter_keys: list[str] = []
     chapter_paths: dict[str, str] = {}
+
     if single_chapter:
         sorted_chapter_keys = [manga_path]
         chapter_paths = {manga_path: manga_path}

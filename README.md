@@ -7,7 +7,7 @@ Example Command (to-pdf):
 ```python3 ./compiler.py out="./{DIRECTORY}.pdf" sortchapternum sortpagenum pgpreset=1num chpreset=ch in=```
 
 # Depends on the  
-\tPillow Python Library: [Link](https://pypi.org/project/pillow/)  
-\tRegex Library: [Link](https://pypi.org/project/regex/)
+\t img2pdf Library: [Link](https://pypi.org/project/img2pdf/)  
+\t Regex Library: [Link](https://pypi.org/project/regex/)
 
 

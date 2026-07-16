@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from PIL import Image
-from PIL import ImageChops
+import img2pdf
 import ansi
 import os
 import sys
@@ -31,16 +30,12 @@ class ARGS:
     PRESETCH: str = "chpreset"
     PRESETPG: str = "pgpreset"
     HELP: str = "help"
-    OPTIMISE: str = "optimise"
-    GREYSCALE_THRESHOLD: str = "greyscale_threshold"
-    FORCE_GREYSCALE: str = "greyscale"
     HTML: str = "html"
     TEMPLATE: str = "template"
     TAGTEMPLATE: str = "tag_template"
-    RESOLUTION: str = "resolution"
     SINGLE_CHAPTER: str = "singlechapter"
-    QUALITY: str = "quality"
     MULTIPLE: str = "multiple"
+    DPI: str = "dpi"
 
 # PRESETS
 # To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
@@ -74,10 +69,11 @@ resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
-pdf_page_batch_size: int = 10
 
 auto_try_chapter_presets: bool = False
 auto_try_page_presets: bool = False
+
+dpi: float = -1
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -160,25 +156,10 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \t\t\tPath to image element
 
         {ansi.fore16.cyan}PDF SPECIFIC --{ansi.clear}
+        {ansi.fore16.red}{ARGS.DPI}=[Value: float]{ansi.clear} (default: {dpi})
+        \tThe DPI used to export images. If left unset or as -1, will use the images DPI.
 
-        {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.red)}
-        \tMarginal improvements during testing
-        \tOptimises the PDF by checking if the picture is greyscale (Despite being in a different format)
-        \tDone by converting it to greyscale (Mode L in PIL, 8 bit Greyscale)
-        \t\tGreyscale is defined by checking if the difference between each channel is less than the greyscale threshold (by default: {greyscale_threshold})
 
-        {ansi.fore16.red}{ARGS.GREYSCALE_THRESHOLD}=[Value: float]{ansi.clear} (default: {greyscale_threshold})
-        \tOnly works if {ansi.qformat(ARGS.OPTIMISE, ansi.fore16.red)} is set!
-        \tThe threshold checks if an image is greyscale, comparing the difference in value between each channel in the image.
-        \tOnly converts to greyscale if it is less than the threshold.
-
-        {ansi.fore16.red}{ARGS.RESOLUTION}=[Value: float]{ansi.clear} (default: {resolution})
-        \tChanges the PDF Export resolution (The size of the PDF file in the reader, not actual PDF quality, see {ansi.qformat(ARGS.QUALITY, ansi.fore16.red)})
-        \tNumber more than 0.
-
-        {ansi.fore16.red}{ARGS.QUALITY}=[Value: integer]{ansi.clear} (default: {quality})
-        \tChanges the PDF Export quality
-        \tNumber between 0 and 100.
     """
 
 
@@ -193,12 +174,8 @@ for argument in sys.argv[1:]:
             page_sort_number = True
         case ARGS.HELP:
             raise Exception(help_string)
-        case ARGS.OPTIMISE:
-            optimise = True
         case ARGS.HTML:
             export_as_html = True
-        case ARGS.FORCE_GREYSCALE:
-            force_greyscale = True
         case ARGS.SINGLE_CHAPTER:
             single_chapter = True
         case _:
@@ -206,40 +183,16 @@ for argument in sys.argv[1:]:
                 stripped_argument: str = argument[: argument.find("=")]
                 value: str = argument[argument.find("=") + 1:]
                 match stripped_argument:
+                    case ARGS.DPI:
+                        try:
+                            dpi = float(value)
+                        except ValueError:
+                            raise ValueError(
+                                f"{ansi.qformat(f'{ARGS.DPI} is not a float: ', ansi.fore16.red)} {
+                                    value}"
+                            )
                     case ARGS.CHREG:
                         chapter_expression = value
-                    case ARGS.GREYSCALE_THRESHOLD:
-                        try:
-                            greyscale_threshold = float(value)
-                        except ValueError:
-                            raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.GREYSCALE_THRESHOLD} is not a float: ', ansi.fore16.red)} {
-                                    value}"
-                            )
-                    case ARGS.QUALITY:
-                        try:
-                            quality = int(value)
-                        except ValueError:
-                            raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.QUALITY} is not an integer: ', ansi.fore16.red)} {
-                                    value}"
-                            )
-                    case ARGS.RESOLUTION:
-                        try:
-                            resolution = float(value)
-                        except ValueError:
-                            raise ValueError(
-                                f"{ansi.qformat(f'{ARGS.RESOLUTION} is not a float: ', ansi.fore16.red)} {
-                                    value}"
-                            )
-                    case ARGS.GREYSCALE_THRESHOLD:
-                        try:
-                            greyscale_threshold = int(value)
-                        except ValueError:
-                            raise ValueError(
-                                f"{ansi.qformat(
-                                    f'{ARGS.GREYSCALE_THRESHOLD} is not an integer: ', ansi.fore16.red)} {value}"
-                            )
                     case ARGS.PRESETCH:
                         preset = value
                         if preset == PRESETS.AUTO:
@@ -350,57 +303,6 @@ image_paths = pages.read(
 )
 images: list = []
 
-
-def image_conversion(image: Image.Image) -> Image.Image:
-    global force_greyscale
-    global optimise
-    global greyscale_threshold
-    if force_greyscale:
-        if image.mode != "L":
-            return image.convert("L")
-    elif optimise:
-        if image.mode != "L":
-            channels: list[Image.Image] = []
-            for i in range(len(image.getbands())):
-                channels.append(image.getchannel(i))
-            color: bool = False
-            for channel in channels[1:]:
-                extrema = ImageChops.difference(channels[0], channel).getextrema()[
-                    1
-                ]
-                print(f"\t\tDifference: {extrema}")
-                # Checking if float even though it is not required (is a single-band image and will always be a float), done so to make pyright happy
-                if extrema is float and extrema > greyscale_threshold:
-                    color = True
-                    break
-            if color:
-                if image.mode != "RGB":
-                    print("\t\t Color image not in RGB: Converting")
-                    return image.convert("RGB")
-            else:
-                print("\t\t Greyscale image: Converting")
-                return image.convert("L")
-        else:
-            print("\t\tAlready Greyscale")
-    elif image.mode != "RGB":
-        print("CONVERTING TO RGB")
-        return image.convert("RGB")
-    return image
-
-
-def pdf_append(images: list[Image.Image]) -> None:
-    global quality
-    global resolution
-    images[0].save(
-        out_path,
-        "PDF",
-        resolution=resolution,
-        append=True,
-        append_images=images[1:],
-        quality=quality,
-    )
-
-
 if export_as_html:
     html_page: str = open(template, "r").read()
     root_image_path: str = os.path.join(out_path, "img")
@@ -424,23 +326,18 @@ else:
                 out_path}", ansi.fore16.cyan
         )
     )
-    with image_conversion(Image.open(image_paths[0])) as export:
-        export.save(
-            out_path,
-            "PDF",
-            resolution=resolution,
-            quality=quality,
-        )
-    images_to_append: list[Image.Image] = []
-    for page in image_paths[1:]:
-        print(ansi.qformat(f"\t{page}", ansi.fore16.red))
-        images_to_append.append(image_conversion(Image.open(page)).copy())
-        if len(images_to_append) >= pdf_page_batch_size:
-            print(images_to_append)
-            pdf_append(images_to_append)
-            images_to_append.clear()
-    if images_to_append:
-        pdf_append(images_to_append)
+    with open(out_path, "wb") as f:
+        if dpi == -1:
+            output_pdf: bytes | None = img2pdf.convert(image_paths)
+        else:
+            layout = img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))
+            output_pdf: bytes | None = img2pdf.convert(
+                image_paths, layout_fun=layout)
+        if isinstance(output_pdf, bytes):
+            f.write(output_pdf)
+        else:
+            raise Exception(ansi.qformat(
+                "Error, img2pdf conversion of images failed, returning None", ansi.fore16.cyan))
 
 
 print(ansi.qformat("DONE!!!", ansi.fore16.red, ansi.font.bold))

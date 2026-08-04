@@ -16,11 +16,18 @@ def auto_try_regex(regex: list[str], paths: list[str]) -> str | None:
     for expression in regex:
         print(f"\t{expression}")
         r = re.compile(expression)
+        failed: bool = False
         for path in paths:
-            if r.search(path):
-                print(ansi.qformat(f"Found working regex: {
-                      expression}", ansi.fore16.cyan))
-                return expression
+            if not r.search(path):
+                print(f'{ansi.qformat(f"Expression failed to pass", ansi.fore16.cyan)} {
+                      expression}{ansi.qformat(f", failed at {path}", ansi.fore16.cyan)}')
+                failed = True
+                break
+        if not failed:
+            print(ansi.qformat(f"Found working regex: {
+                expression}", ansi.fore16.cyan))
+            return expression
+
     return None
 
 
@@ -49,13 +56,13 @@ def numsort(sort: dict[str, str]) -> list[str]:
     keys: list[str] = list(sort)
     try:
         keys.sort(key=lambda k: float(sort[k]))
-    except ValueError:
+    except ValueError as error:
         raise ValueError(
             ansi.qformat(
-                "Sorting by number failed! Try applying a regex, preset or removing the sort argument.\nFailed on: \n",
+                "Sorting by number failed! Try applying a regex, preset or removing the sort argument.\nMessage: \n",
                 ansi.fore16.red,
             )
-            + str(sort)
+            + str(error)
         )
     return keys
 
@@ -113,16 +120,26 @@ def read(
                     )
             else:
                 chapter_paths = {dir: dir for dir in raw_chapter_paths}
-            print(
-                ansi.qformat(
-                    "Sorting Chapters numerically" if chapter_sort_number else "Sorting Chapters alphabetically",
-                    ansi.fore16.cyan,
+            if len(chapter_paths) > 1:
+                print(
+                    ansi.qformat(
+                        "Sorting Chapters numerically" if chapter_sort_number else "Sorting Chapters alphabetically",
+                        ansi.fore16.cyan,
+                    )
                 )
-            )
-            if chapter_sort_number:
-                sorted_chapter_keys = numsort(chapter_paths)
+                if chapter_sort_number:
+                    sorted_chapter_keys = numsort(chapter_paths)
+                else:
+                    sorted_chapter_keys = alphasort(chapter_paths)
             else:
-                sorted_chapter_keys = alphasort(chapter_paths)
+                print(
+                    ansi.qformat(
+                        "Skipping Chapter sorting as there is only 1 Chapter",
+                        ansi.fore16.cyan,
+                    )
+                )
+                sorted_chapter_keys = list(chapter_paths.keys())
+
         else:
             raise Exception(
                 f'{ansi.fore16.cyan}Path "{

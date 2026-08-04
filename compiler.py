@@ -36,6 +36,8 @@ class ARGS:
     SINGLE_CHAPTER: str = "singlechapter"
     MULTIPLE: str = "multiple"
     DPI: str = "dpi"
+    OVERWRITEDUPLICATE = "overwrite_duplicate"
+    IGNOREDUPLICATE = "ignore_duplicate"
 
 # PRESETS
 # To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
@@ -54,7 +56,7 @@ class PRESETS:
 
 out_dirname = ""
 manga_path = ""
-out_path = ""
+template_out_path = ""
 
 chapter_expression = ""
 chapter_sort_number = False
@@ -62,7 +64,13 @@ page_expression = ""
 page_sort_number = False
 template: str = os.path.join(os.path.dirname(sys.argv[0]), "template.html")
 image_tag_template: str = "<img src='{source}'>"
+
 export_as_html: bool = False
+export_multiple: bool = False
+overwrite_duplicate_manga: bool = False
+ignore_duplicate_manga: bool = False
+
+
 optimise: bool = False
 greyscale_threshold: float = 0
 resolution: float = 100.0
@@ -87,6 +95,12 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tThe file it saves the output as [Including the filename!], use the format string {AUTOFILLS.DIR} to use the name of the input directory by default.
 
         {ansi.fore16.cyan}Optional Arguments--{ansi.clear}
+
+        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
+        \tExports multiple manga in a given directory, ignoring all Exceptions.
+
+        {ansi.fore16.red}{ARGS.OVERWRITEDUPLICATE}{ansi.clear}
+        \tOverwrites {ansi.qformat(ARGS.OUT, ansi.fore16.red)} if a file is already found there.
 
         {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
         \tShows this help page
@@ -172,6 +186,12 @@ for argument in sys.argv[1:]:
             chapter_sort_number = True
         case ARGS.SORTPGNUM:
             page_sort_number = True
+        case ARGS.MULTIPLE:
+            export_multiple = True
+        case ARGS.OVERWRITEDUPLICATE:
+            overwrite_duplicate_manga = True
+        case ARGS.IGNOREDUPLICATE:
+            ignore_duplicate_manga = True
         case ARGS.HELP:
             raise Exception(help_string)
         case ARGS.HTML:
@@ -230,7 +250,7 @@ for argument in sys.argv[1:]:
                     case ARGS.TAGTEMPLATE:
                         image_tag_template = value
                     case ARGS.OUT:
-                        out_path = value
+                        template_out_path = value
                     case ARGS.TEMPLATE:
                         template = value
                     case _:
@@ -252,7 +272,7 @@ elif not os.path.exists(manga_path):
         ansi.qformat(
             f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
     )
-elif out_path == "":
+elif template_out_path == "":
     raise Exception(ansi.qformat(
         "No output path is provided", ansi.fore16.cyan))
 elif not os.path.exists(os.path.dirname(manga_path)):
@@ -267,77 +287,95 @@ elif export_as_html and not os.path.exists(template):
         ansi.qformat(
             f"Template file [{template}] does not exist", ansi.fore16.cyan)
     )
+manga_paths: list[str] = [manga_path]
+if export_multiple:
+    manga_paths: list[str] = [os.path.join(
+        manga_path.removesuffix("/"), path) for path in pages.listdir(manga_path)]
 
-out_path = out_path.format(
-    DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
+failed_manga: dict[str, str] = {}
+for manga_path in manga_paths:
+    try:
+        out_path = template_out_path.format(
+            DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
 
-if (
-    os.path.exists(out_path)
-    and input(
-        ansi.qformat(
-            f"Output file [{out_path}] already exists! Overwrite? (N/y) ",
-            ansi.fore16.red,
-        )
-    )
-    != "y"
-):
-    raise Exception(ansi.qformat("Aborted", ansi.fore16.cyan))
+        if (
+            ((not overwrite_duplicate_manga) and (os.path.exists(out_path)
+                                                  and (ignore_duplicate_manga or input(
+                ansi.qformat(
+                    f"Output file [{
+                        out_path}] already exists! Overwrite? (N/y) ",
+                    ansi.fore16.red,
+                )
+                                                      )
+                != "y")))
+        ):
+            raise Exception(ansi.qformat("Aborted", ansi.fore16.cyan))
 
-print(
-    f"{ansi.qformat('Writing file: ', ansi.fore16.cyan)}{out_path}\n{
-        ansi.qformat('Reading Manga Directory: ', ansi.fore16.cyan)}{manga_path}"
-)
-
-auto_sort_chapter_presets = [PRESETS.ch[key] for key in PRESETS.ch.keys()]
-print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
-image_paths = pages.read(
-    manga_path,
-    chapter_expression,
-    page_expression,
-    page_sort_number,
-    chapter_sort_number,
-    single_chapter,
-    auto_try_chapter_presets,
-    auto_sort_chapter_presets
-
-)
-images: list = []
-
-if export_as_html:
-    html_page: str = open(template, "r").read()
-    root_image_path: str = os.path.join(out_path, "img")
-    image_tag_template: str = "<img src='{source}'>"
-    image_tag_list: str = ""
-    if not os.path.exists(root_image_path):
-        os.makedirs(root_image_path)
-    for i, path in enumerate(image_paths):
-        filename = f"{i}{os.path.splitext(path)[1]}"
-        shutil.copy(path, os.path.join(root_image_path, filename))
-        image_tag_list += image_tag_template.format(
-            source=os.path.join("./img", filename)
+        print(
+            f"{ansi.qformat('Writing file: ', ansi.fore16.cyan)}{out_path}\n{
+                ansi.qformat('Reading Manga Directory: ', ansi.fore16.cyan)}{manga_path}"
         )
 
-    with open(os.path.join(out_path, "index.html"), "w") as html_file:
-        html_file.write(html_page.replace("{text}", image_tag_list))
-else:
-    print(
-        ansi.qformat(
-            f"Making a PDF of {len(image_paths)} pages at {
-                out_path}", ansi.fore16.cyan
+        auto_sort_chapter_presets = [PRESETS.ch[key]
+                                     for key in PRESETS.ch.keys()]
+        print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
+        image_paths = pages.read(
+            manga_path,
+            chapter_expression,
+            page_expression,
+            page_sort_number,
+            chapter_sort_number,
+            single_chapter,
+            auto_try_chapter_presets,
+            auto_sort_chapter_presets
+
         )
-    )
-    with open(out_path, "wb") as f:
-        if dpi == -1:
-            output_pdf: bytes | None = img2pdf.convert(image_paths)
+        images: list = []
+
+        if export_as_html:
+            html_page: str = open(template, "r").read()
+            root_image_path: str = os.path.join(out_path, "img")
+            image_tag_template: str = "<img src='{source}'>"
+            image_tag_list: str = ""
+            if not os.path.exists(root_image_path):
+                os.makedirs(root_image_path)
+            for i, path in enumerate(image_paths):
+                filename = f"{i}{os.path.splitext(path)[1]}"
+                shutil.copy(path, os.path.join(root_image_path, filename))
+                image_tag_list += image_tag_template.format(
+                    source=os.path.join("./img", filename)
+                )
+
+            with open(os.path.join(out_path, "index.html"), "w") as html_file:
+                html_file.write(html_page.replace("{text}", image_tag_list))
         else:
-            layout = img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))
-            output_pdf: bytes | None = img2pdf.convert(
-                image_paths, layout_fun=layout)
-        if isinstance(output_pdf, bytes):
-            f.write(output_pdf)
+            print(
+                ansi.qformat(
+                    f"Making a PDF of {len(image_paths)} pages at {
+                        out_path}", ansi.fore16.cyan
+                )
+            )
+            with open(out_path, "wb") as f:
+                if dpi == -1:
+                    output_pdf: bytes | None = img2pdf.convert(image_paths)
+                else:
+                    layout = img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))
+                    output_pdf: bytes | None = img2pdf.convert(
+                        image_paths, layout_fun=layout, rotation=img2pdf.Rotation.ifvalid)
+                if isinstance(output_pdf, bytes):
+                    f.write(output_pdf)
+                else:
+                    raise Exception(ansi.qformat(
+                        "Error, img2pdf conversion of images failed, returning None", ansi.fore16.cyan))
+    except Exception as ex:
+        if export_multiple:
+            failed_manga[manga_path] = str(ex)
         else:
-            raise Exception(ansi.qformat(
-                "Error, img2pdf conversion of images failed, returning None", ansi.fore16.cyan))
-
+            raise ex
 
 print(ansi.qformat("DONE!!!", ansi.fore16.red, ansi.font.bold))
+if failed_manga:
+    print(ansi.qformat("The following manga failed to compile:", ansi.fore16.red))
+    for manga in failed_manga:
+        print(f'{ansi.qformat(f"{manga}: ", ansi.fore16.red)}{
+              failed_manga[manga]}')

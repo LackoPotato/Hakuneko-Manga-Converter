@@ -296,7 +296,7 @@ failed_manga: dict[str, str] = {}
 for manga_path in manga_paths:
     try:
         out_path = template_out_path.format(
-            DIRECTORY=os.path.split(manga_path.removesuffix("/"))[1])
+            NAME=os.path.split(manga_path.removesuffix("/"))[1])
 
         if (
             ((not overwrite_duplicate_manga) and (os.path.exists(out_path)

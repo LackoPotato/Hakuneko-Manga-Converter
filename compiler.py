@@ -39,6 +39,7 @@ class ARGS:
     OVERWRITEDUPLICATE = "overwrite_duplicate"
     IGNOREDUPLICATE = "ignore_duplicate"
     IGNOREREGFAILURE = "ignore_auto_fail"
+    QUERYPAGEFILENAME = "query_page"
 
 
 # PRESETS
@@ -87,46 +88,9 @@ auto_try_page_presets: bool = False
 imgpdfsupported: list[str] = [""]
 dpi: float = -1
 convert_type: bool = False
+query_page: int = -1
 
-help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
-        If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
-
-        {ansi.font.bold}REQUIRED Arguments--{ansi.clear}
-
-        {ansi.fore16.red}{ARGS.IN}=[path/to/input]{ansi.clear}
-        \tThe input directory used
-
-        {ansi.fore16.red}{ARGS.OUT}=[path/to/output]{ansi.clear}
-        \tThe file it saves the output as [Including the filename!], use the format string {AUTOFILLS.DIR} to use the name of the input directory by default.
-
-        {ansi.fore16.cyan}Optional Arguments--{ansi.clear}
-
-        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
-        \tExports multiple manga in a given directory, ignoring all Exceptions.
-
-        {ansi.fore16.red}{ARGS.OVERWRITEDUPLICATE}{ansi.clear}
-        \tOverwrites {ansi.qformat(ARGS.OUT, ansi.fore16.red)} if a file is already found there.
-
-        {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
-        \tShows this help page
-
-        {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
-        \tExports the file as a HTML folder instead of a PDF
-        \tIf this argument is not added, exports as PDF by default
-
-        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
-        \tExports the file as a HTML folder instead of a PDF
-        \tIf this argument is not added, exports as PDF by default
-
-        {ansi.fore16.red}{ARGS.SORTCHNUM}{ansi.clear}
-        \tSorts chapters numerically if possible
-
-        {ansi.fore16.red}{ARGS.SORTPGNUM}{ansi.clear}
-        \tSorts pages numerically if possible
-
-        {ansi.fore16.red}{ARGS.SINGLE_CHAPTER}{ansi.clear}
-        \tCompiles a single chapter
-        \t\tIf the input directory is a chapter of a manga (a single folder with a list of images), using this setting skips the chapter scanning step and directly compiles it.
+regex_help_string: str = f"""        {ansi.fore16.cyan}REGEX FILTERING --{ansi.clear}
 
         {ansi.fore16.red}{ARGS.IGNOREREGFAILURE}{ansi.clear}
         \tForces the compiler to continue if autoregex filters fail
@@ -163,8 +127,9 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \t\t1num
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.pg["1num"]}
         \t\t\tGets the first number in the filename (example: Name of the Page 03 returns 03)
+"""
 
-        {ansi.fore16.cyan}HTML SPECIFIC --{ansi.clear}
+html_help_string: str = f"""        {ansi.fore16.cyan}HTML SPECIFIC --{ansi.clear}
 
         {ansi.fore16.red}{ARGS.TEMPLATE}=[path/to/template]{ansi.clear} (default: {template})
         \tThe template file used to make the output html file.
@@ -177,12 +142,70 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tUSES PYTHON's STRING FORMATTING TO ADD
         \t\t%source
         \t\t\tPath to image element
+"""
 
-        {ansi.fore16.cyan}PDF SPECIFIC --{ansi.clear}
+pdf_help_string: str = f"""        {ansi.fore16.cyan}PDF SPECIFIC --{ansi.clear}
+
         {ansi.fore16.red}{ARGS.DPI}=[Value: float]{ansi.clear} (default: {dpi})
-        \tThe DPI used to export images. If left unset or as -1, will use the images DPI.
+        \tThe DPI used to export images. If left unset or as -1, will use the images DPI."""
 
-    """
+optional_help_string: str = f"""        {ansi.fore16.cyan}Optional Arguments--{ansi.clear}
+
+        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
+        \tExports multiple manga in a given directory, ignoring all Exceptions.
+
+        {ansi.fore16.red}{ARGS.OVERWRITEDUPLICATE}{ansi.clear}
+        \tOverwrites {ansi.qformat(ARGS.OUT, ansi.fore16.red)} if a file is already found there.
+
+        {ansi.fore16.red}{ARGS.HELP}{ansi.clear}
+        \tShows this help page
+
+        {ansi.fore16.red}{ARGS.HTML}{ansi.clear}
+        \tExports the file as a HTML folder instead of a PDF
+        \tIf this argument is not added, exports as PDF by default
+
+        {ansi.fore16.red}{ARGS.MULTIPLE}{ansi.clear}
+        \tExports the file as a HTML folder instead of a PDF
+        \tIf this argument is not added, exports as PDF by default
+
+        {ansi.fore16.red}{ARGS.SORTCHNUM}{ansi.clear}
+        \tSorts chapters numerically if possible
+
+        {ansi.fore16.red}{ARGS.SORTPGNUM}{ansi.clear}
+        \tSorts pages numerically if possible
+
+        {ansi.fore16.red}{ARGS.SINGLE_CHAPTER}{ansi.clear}
+        \tCompiles a single chapter
+        \t\tIf the input directory is a chapter of a manga (a single folder with a list of images), using this setting skips the chapter scanning step and directly compiles it.
+
+        {ansi.fore16.red}{ARGS.QUERYPAGEFILENAME}=[Value: Int]{ansi.clear} (default: {query_page})
+        \tReturns the filepath for the given page number and stops compilation
+        \tFails if the page number is larger than the length of the file or less than 1
+        """
+
+required_help_string: str = f"""        {ansi.font.bold}REQUIRED Arguments--{ansi.clear}
+
+        {ansi.fore16.red}{ARGS.IN}=[path/to/input]{ansi.clear}
+        \tThe input directory used
+
+        {ansi.fore16.red}{ARGS.OUT}=[path/to/output]{ansi.clear}
+ \tThe file it saves the output as [Including the filename!], use the format string {AUTOFILLS.DIR} to use the name of the input directory by default.
+"""
+
+
+help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
+        If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
+
+{required_help_string}
+
+{optional_help_string}
+
+{regex_help_string}
+
+{html_help_string}
+
+{pdf_help_string}
+"""
 
 
 if len(sys.argv) == 1:
@@ -263,6 +286,19 @@ for argument in sys.argv[1:]:
                         template_out_path = value
                     case ARGS.TEMPLATE:
                         template = value
+                    case ARGS.QUERYPAGEFILENAME:
+                        try:
+                            query_page = int(value)
+                        except ValueError:
+                            raise ValueError(
+                                f"{ansi.qformat(f'{ARGS.QUERYPAGEFILENAME} is not an int: ', ansi.fore16.red)} {
+                                    value}"
+                            )
+                        if query_page < 1:
+                            raise ValueError(
+                                f"{ansi.qformat(f'{ARGS.QUERYPAGEFILENAME} is less than 1: ', ansi.fore16.red)} {
+                                    value}"
+                            )
                     case _:
                         raise Exception(
                             f"{ansi.qformat('Unknown argument: ', ansi.fore16.red)}{argument}\nUse {
@@ -282,21 +318,23 @@ elif not os.path.exists(manga_path):
         ansi.qformat(
             f"Manga Directory [{manga_path}] does not exist", ansi.fore16.cyan)
     )
-elif template_out_path == "":
-    raise Exception(ansi.qformat(
-        "No output path is provided", ansi.fore16.cyan))
-elif not os.path.exists(os.path.dirname(manga_path)):
-    raise Exception(
-        ansi.qformat(
-            f"Output Directory [{os.path.dirname(manga_path)}] does not exist",
-            ansi.fore16.cyan,
+elif query_page == -1:
+    if template_out_path == "":
+        raise Exception(ansi.qformat(
+            "No output path is provided", ansi.fore16.cyan))
+    elif not os.path.exists(os.path.dirname(manga_path)):
+        raise Exception(
+            ansi.qformat(
+                f"Output Directory [{os.path.dirname(
+                    manga_path)}] does not exist",
+                ansi.fore16.cyan,
+            )
         )
-    )
-elif export_as_html and not os.path.exists(template):
-    raise Exception(
-        ansi.qformat(
-            f"Template file [{template}] does not exist", ansi.fore16.cyan)
-    )
+    elif export_as_html and not os.path.exists(template):
+        raise Exception(
+            ansi.qformat(
+                f"Template file [{template}] does not exist", ansi.fore16.cyan)
+        )
 manga_paths: list[str] = [manga_path]
 if export_multiple:
     manga_paths: list[str] = [os.path.join(
@@ -341,41 +379,53 @@ for manga_path in manga_paths:
             ignore_autoreg_failure
         )
         images: list = []
-
-        if export_as_html:
-            html_page: str = open(template, "r").read()
-            root_image_path: str = os.path.join(out_path, "img")
-            image_tag_template: str = "<img src='{source}'>"
-            image_tag_list: str = ""
-            if not os.path.exists(root_image_path):
-                os.makedirs(root_image_path)
-            for i, path in enumerate(image_paths):
-                filename = f"{i}{os.path.splitext(path)[1]}"
-                shutil.copy(path, os.path.join(root_image_path, filename))
-                image_tag_list += image_tag_template.format(
-                    source=os.path.join("./img", filename)
+        if query_page == -1:
+            if export_as_html:
+                html_page: str = open(template, "r").read()
+                root_image_path: str = os.path.join(out_path, "img")
+                image_tag_template: str = "<img src='{source}'>"
+                image_tag_list: str = ""
+                if not os.path.exists(root_image_path):
+                    os.makedirs(root_image_path)
+                for i, path in enumerate(image_paths):
+                    filename = f"{i}{os.path.splitext(path)[1]}"
+                    shutil.copy(path, os.path.join(root_image_path, filename))
+                    image_tag_list += image_tag_template.format(
+                        source=os.path.join("./img", filename)
+                    )
+                with open(os.path.join(out_path, "index.html"), "w") as html_file:
+                    html_file.write(html_page.replace(
+                        "{text}", image_tag_list))
+            else:
+                print(
+                    ansi.qformat(
+                        f"Making a PDF of {len(image_paths)} pages at {
+                            out_path}", ansi.fore16.cyan
+                    )
                 )
-            with open(os.path.join(out_path, "index.html"), "w") as html_file:
-                html_file.write(html_page.replace("{text}", image_tag_list))
+                with open(out_path, "wb") as f:
+                    if dpi == -1:
+                        output_pdf: bytes | None = img2pdf.convert(image_paths)
+                    else:
+                        layout = img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))
+                        output_pdf: bytes | None = img2pdf.convert(
+                            image_paths, layout_fun=layout, rotation=img2pdf.Rotation.ifvalid)
+                    if isinstance(output_pdf, bytes):
+                        f.write(output_pdf)
+                    else:
+                        raise Exception(ansi.qformat(
+                            "Error, img2pdf conversion of images failed, returned None.", ansi.fore16.cyan))
         else:
-            print(
-                ansi.qformat(
-                    f"Making a PDF of {len(image_paths)} pages at {
-                        out_path}", ansi.fore16.cyan
+            if query_page-1 < len(image_paths):
+                print(
+                    f"{ansi.fore16.cyan}Page {query_page} has path \"{ansi.clear}{
+                        image_paths[query_page-1]}{ansi.fore16.cyan}\""
                 )
-            )
-            with open(out_path, "wb") as f:
-                if dpi == -1:
-                    output_pdf: bytes | None = img2pdf.convert(image_paths)
-                else:
-                    layout = img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))
-                    output_pdf: bytes | None = img2pdf.convert(
-                        image_paths, layout_fun=layout, rotation=img2pdf.Rotation.ifvalid)
-                if isinstance(output_pdf, bytes):
-                    f.write(output_pdf)
-                else:
-                    raise Exception(ansi.qformat(
-                        "Error, img2pdf conversion of images failed, returned None.", ansi.fore16.cyan))
+            else:
+                raise ValueError(
+                    f"{ansi.qformat(f'{ARGS.QUERYPAGEFILENAME} is more than length of available pages: ', ansi.fore16.red)} {
+                        query_page-1} >= {len(image_paths)}"
+                )
     except Exception as ex:
         if export_multiple:
             failed_manga[manga_path] = str(ex)

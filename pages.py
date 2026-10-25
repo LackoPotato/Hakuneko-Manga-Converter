@@ -82,6 +82,7 @@ def read(
     single_chapter: bool = False,
     auto_sort_chapter: bool = False,
     auto_sort_chapter_regex: list[str] = [],
+    ignore_autoreg_failure: bool = False,
 ) -> list[str]:
     sorted_chapter_keys: list[str] = []
     chapter_paths: dict[str, str] = {}
@@ -95,19 +96,22 @@ def read(
             for i, chapter_path in enumerate(raw_chapter_paths):
                 print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {
                       chapter_path}")
-
-            if auto_sort_chapter:
-                print(ansi.qformat(
-                    f"Trying to auto-sort chapters with the following: {auto_sort_chapter_regex}", ansi.fore16.cyan))
-                sort_result = auto_try_regex(
-                    auto_sort_chapter_regex, raw_chapter_paths)
-                if sort_result:
-                    chapter_expression = sort_result
-                else:
-                    raise Exception(
-                        f'{ansi.fore16.cyan} "{
-                            manga_path}" failed the auto-regex!{ansi.clear}'
-                    )
+            if len(raw_chapter_paths) > 1:
+                if auto_sort_chapter:
+                    print(ansi.qformat(
+                        f"Trying to auto-sort chapters with the following: {auto_sort_chapter_regex}", ansi.fore16.cyan))
+                    sort_result = auto_try_regex(
+                        auto_sort_chapter_regex, raw_chapter_paths)
+                    if sort_result:
+                        chapter_expression = sort_result
+                    elif not ignore_autoreg_failure:
+                        raise Exception(
+                            f'{ansi.fore16.cyan} "{
+                                manga_path}" failed the auto-regex!{ansi.clear}'
+                        )
+                    else:
+                        print(ansi.qformat(f'[WARNING] {ansi.fore16.cyan} "{
+                            manga_path}" failed the auto-regex!{ansi.fore16.yellow}, continuing anyways...'), ansi.fore16.yellow)
 
             if chapter_expression:
                 chapter_paths = regex_paths(

@@ -38,6 +38,8 @@ class ARGS:
     DPI: str = "dpi"
     OVERWRITEDUPLICATE = "overwrite_duplicate"
     IGNOREDUPLICATE = "ignore_duplicate"
+    IGNOREREGFAILURE = "ignore_auto_fail"
+
 
 # PRESETS
 # To add a new preset, add another entry into the corresponding dictionary with it's name as the key and it's regex as the value.
@@ -49,7 +51,7 @@ class PRESETS:
     ch: dict[str, str] = {
         "ch": r"(?<=Ch.)[\d\.]*",
         "ignore[]": r"((?=\d)[\d\.]*)(?!(?<=\[[^][]*)[^][]*])",
-        "1num": r"(?=\d)[\d\.]*"
+        "1num": r"(?=\d)[\d\.]*",
     }
     pg: dict[str, str] = {"1num": r"(?=\d)[\d\.]*"}
 
@@ -77,11 +79,14 @@ resolution: float = 100.0
 force_greyscale: bool = False
 single_chapter: bool = False
 quality: int = 75
+ignore_autoreg_failure: bool = False
 
 auto_try_chapter_presets: bool = False
 auto_try_page_presets: bool = False
 
+imgpdfsupported: list[str] = [""]
 dpi: float = -1
+convert_type: bool = False
 
 help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         If you want to export as HTML, use the argument {ansi.fore16.red}{ARGS.HTML}{ansi.fore16.cyan}
@@ -123,6 +128,9 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \tCompiles a single chapter
         \t\tIf the input directory is a chapter of a manga (a single folder with a list of images), using this setting skips the chapter scanning step and directly compiles it.
 
+        {ansi.fore16.red}{ARGS.IGNOREREGFAILURE}{ansi.clear}
+        \tForces the compiler to continue if autoregex filters fail
+
         {ansi.fore16.red}{ARGS.CHREG}=[regex expression]{ansi.clear}
         \tThe Regular Expression used to mask the chapter directory name (used for sorting)
         \tUse {ansi.qformat(ARGS.PRESETCH, ansi.fore16.red)} if you want a preset
@@ -132,6 +140,7 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         \t\tauto
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: None, is a special preset
         \t\t\tAutomatically tries all presets in the order {PRESETS.ch.keys()}. On failing to sort, it instead switches to the next preset and tries again.
+        \t\t\tIf no presets work, will raise an Exception and fail, unless if {ansi.qformat(ARGS.IGNOREREGFAILURE, ansi.fore16.red)} is set.
 
         \t\tch
         \t\t\t{ansi.qformat("REGEX: ", ansi.fore16.blue)}: {PRESETS.ch["ch"]}
@@ -173,7 +182,6 @@ help_string: str = f"""{ansi.fore16.cyan}HAKUNEKO COMPILER (By LackoPotato :3)
         {ansi.fore16.red}{ARGS.DPI}=[Value: float]{ansi.clear} (default: {dpi})
         \tThe DPI used to export images. If left unset or as -1, will use the images DPI.
 
-
     """
 
 
@@ -184,6 +192,8 @@ for argument in sys.argv[1:]:
     match argument:
         case ARGS.SORTCHNUM:
             chapter_sort_number = True
+        case ARGS.IGNOREREGFAILURE:
+            ignore_autoreg_failure = True
         case ARGS.SORTPGNUM:
             page_sort_number = True
         case ARGS.MULTIPLE:
@@ -327,8 +337,8 @@ for manga_path in manga_paths:
             chapter_sort_number,
             single_chapter,
             auto_try_chapter_presets,
-            auto_sort_chapter_presets
-
+            auto_sort_chapter_presets,
+            ignore_autoreg_failure
         )
         images: list = []
 
@@ -345,7 +355,6 @@ for manga_path in manga_paths:
                 image_tag_list += image_tag_template.format(
                     source=os.path.join("./img", filename)
                 )
-
             with open(os.path.join(out_path, "index.html"), "w") as html_file:
                 html_file.write(html_page.replace("{text}", image_tag_list))
         else:
@@ -366,7 +375,7 @@ for manga_path in manga_paths:
                     f.write(output_pdf)
                 else:
                     raise Exception(ansi.qformat(
-                        "Error, img2pdf conversion of images failed, returning None", ansi.fore16.cyan))
+                        "Error, img2pdf conversion of images failed, returned None.", ansi.fore16.cyan))
     except Exception as ex:
         if export_multiple:
             failed_manga[manga_path] = str(ex)

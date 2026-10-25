@@ -93,9 +93,7 @@ def read(
     else:
         raw_chapter_paths: list[str] = get_directories(manga_path)
         if len(raw_chapter_paths):
-            for i, chapter_path in enumerate(raw_chapter_paths):
-                print(f"\t{ansi.qformat(str(i), ansi.fore16.red)} {
-                      chapter_path}")
+
             if len(raw_chapter_paths) > 1:
                 if auto_sort_chapter:
                     print(ansi.qformat(
@@ -116,12 +114,6 @@ def read(
             if chapter_expression:
                 chapter_paths = regex_paths(
                     chapter_expression, raw_chapter_paths)
-                print(f"{ansi.fore16.cyan}Masked Names: ")
-                for i, chapter_path in enumerate(chapter_paths):
-                    print(
-                        f"\t{ansi.fore16.red}{i}{ansi.clear} {
-                            chapter_paths[chapter_path]}"
-                    )
             else:
                 chapter_paths = {dir: dir for dir in raw_chapter_paths}
             if len(chapter_paths) > 1:
@@ -151,11 +143,9 @@ def read(
             )
     manga_pages: list[dict] = []
     for chapter in sorted_chapter_keys:
-        print(f"{ansi.qformat('Chapter Title: ', ansi.fore16.cyan)}{chapter}")
         chapter_path: str = manga_path
         if not single_chapter:
             chapter_path = os.path.join(manga_path, chapter)
-        print(f"{ansi.qformat('Chapter Path: ', ansi.fore16.cyan)}{chapter_path}")
         page_paths: dict[str, str] = {}
 
         if page_expression:

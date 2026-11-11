@@ -375,8 +375,7 @@ for manga_path in manga_paths:
         print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
         reader: Reader = Reader(manga_path, single_chapter, chapter_expression, chapter_sort_number, auto_try_chapter_presets,
                                 auto_sort_chapter_presets, ignore_autoreg_failure, page_expression, page_sort_number)
-        image_paths = reader.read_singular()
-
+        image_paths: list[str] = reader.read_singular()
         images: list = []
         if query_page == -1:
             if export_as_html:

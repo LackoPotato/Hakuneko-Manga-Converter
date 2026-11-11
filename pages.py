@@ -179,7 +179,7 @@ class Reader:
         for chapter in sorted_chapter_keys:
             chapter_path: str = self.manga_path
             if not self.single_chapter:
-                self.chapter_path = os.path.join(self.manga_path, chapter)
+                chapter_path = os.path.join(self.manga_path, chapter)
             page_paths: dict[str, str] = {}
 
             if self.page_expression:

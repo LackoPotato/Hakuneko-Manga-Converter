@@ -373,17 +373,10 @@ for manga_path in manga_paths:
         auto_sort_chapter_presets = [PRESETS.ch[key]
                                      for key in PRESETS.ch.keys()]
         print(f"{ansi.qformat('Reading Manga: ', ansi.fore16.cyan)}{manga_path}")
-        image_paths = pages.read(
-            manga_path,
-            chapter_expression,
-            page_expression,
-            page_sort_number,
-            chapter_sort_number,
-            single_chapter,
-            auto_try_chapter_presets,
-            auto_sort_chapter_presets,
-            ignore_autoreg_failure
-        )
+        reader: Reader = Reader(manga_path, single_chapter, chapter_expression, chapter_sort_number, auto_try_chapter_presets,
+                                auto_sort_chapter_presets, ignore_autoreg_failure, page_expression, page_sort_number)
+        image_paths = reader.read_singular()
+
         images: list = []
         if query_page == -1:
             if export_as_html:

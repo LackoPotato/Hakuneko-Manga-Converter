@@ -4,7 +4,7 @@ import img2pdf
 import ansi
 import os
 import sys
-import pages
+from pages import Reader
 import shutil
 
 
@@ -29,6 +29,7 @@ class ARGS:
     SORTPGNUM: str = "sortpagenum"
     PRESETCH: str = "chpreset"
     PRESETPG: str = "pgpreset"
+    PRESETVOL: str = "vlpreset"
     HELP: str = "help"
     HTML: str = "html"
     TEMPLATE: str = "template"
@@ -49,6 +50,11 @@ class ARGS:
 
 class PRESETS:
     AUTO: str = "auto"
+    vl: dict[str, str] = {
+        "ch": r"(?<=Vol.)[\d\.]*",
+        "ignore[]": r"((?=\d)[\d\.]*)(?!(?<=\[[^][]*)[^][]*])",
+        "1num": r"(?=\d)[\d\.]*",
+    }
     ch: dict[str, str] = {
         "ch": r"(?<=Ch.)[\d\.]*",
         "ignore[]": r"((?=\d)[\d\.]*)(?!(?<=\[[^][]*)[^][]*])",
@@ -338,7 +344,7 @@ elif query_page == -1:
 manga_paths: list[str] = [manga_path]
 if export_multiple:
     manga_paths: list[str] = [os.path.join(
-        manga_path.removesuffix("/"), path) for path in pages.listdir(manga_path)]
+        manga_path.removesuffix("/"), path) for path in Reader.listdir(manga_path)]
 
 failed_manga: dict[str, str] = {}
 for manga_path in manga_paths:
